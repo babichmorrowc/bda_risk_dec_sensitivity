@@ -42,6 +42,7 @@ def get_Exp(input_data_path,
     return Exp
 
 # Function to get indices of land locations and the corresponding arrays of latitude and longitude
+# QUESTION: is this necessary to run every time/
 def get_ind_lat_lon(Exp,
                     input_data_path,
                     data_source,
@@ -60,6 +61,50 @@ def get_ind_lat_lon(Exp,
     lat = np.array(gamsamples.variables['exposure_latitude'])[ind[0],ind[1]]
 
     return (ind, lat, lon)
+
+# Function to find decision in a single cell
+def decision_single_cell(ind,
+                        index,
+                        EAI,
+                        Exp,
+                        nd,
+                        decision_inputs,
+                        cost_per_day,
+                        cweights):
+    # state of nature (risk)
+    xi = EAI[ind[0][index],ind[1][index],:]
+    # no. of people/jobs in each location
+    ppl = Exp[ind[0][index],ind[1][index]]
+
+    # calculate cost of each decision option for each of the 1000 GAM samples of risk
+    cost = np.empty([nd,1000])
+    for j in range(nd):
+        for k in range(1000):
+            # cost outcome for decision j and sample k = cost per person + cost per day + cost from days lost (EAI) with impact reduced as a result
+            cost[j,k] = decision_inputs[j, 0]*ppl + decision_inputs[j, 1]*(10**xi[k] - 1) + cost_per_day*(1-decision_inputs[j, 2]/100)*(10**xi[k] - 1)
+        
+    # 2. Meeting ojectives - this is input by the decision maker
+    meet_obs = decision_inputs[:,3]/10
+
+    # Calculate the utility of each decision attribute (cost and meeting objectives), i.e. the value of different
+    # values of each to the decision maker - here assuming a linear
+    # utility but this could be elicited from the decision maker (i.e. how risk averse they are)
+    util_cost = 1 + (-1 /cost.max()) * cost
+    util_meet_obs = meet_obs
+
+        # calculate the overall utility (value) of each decision option for each sample of risk
+    util_scores = np.empty([nd, 1000])
+    for j in range(nd):
+        util_scores[j,:] = cweights[0] * util_cost[j,:] + cweights[1] * util_meet_obs[j]
+    # find expected (mean) utility
+    exp_util = np.empty(nd)
+    for j in range(nd):
+        exp_util[j] = np.mean(util_scores[j,:])
+    #find which decision optimises the expected utility
+    opd = np.where(exp_util == max(exp_util))[0] + 1 #(add one because python indexing starts at 0)
+
+    # Return: optimal decision, expected utility, utility scores, cost
+    return opd, exp_util, util_scores, cost
 
 def write_decision_file(output_data_path,
                         overwrite,
