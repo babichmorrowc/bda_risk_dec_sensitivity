@@ -116,10 +116,11 @@ def write_decision_file(output_data_path,
                         nd,
                         decision_inputs,
                         cost_per_day,
-                        cweights):
+                        cweights,
+                        risk_input_string):
     # Name of output file
-    output_file_string = 'd2_'+'_'.join(map(str, decision_inputs[1])) + '_d3_'+'_'.join(map(str, decision_inputs[2]))
-    output_file_path_name = output_data_path+'OptimalDecision_'+output_file_string+'.csv'
+    output_file_string = '_d2_'+'_'.join(map(str, decision_inputs[1])) + '_d3_'+'_'.join(map(str, decision_inputs[2]))
+    output_file_path_name = output_data_path+'OptimalDecision_'+risk_input_string+output_file_string+'.csv'
     
     # If overwrite = FALSE, check if a file of this name already exists
     if not overwrite:
