@@ -2,7 +2,6 @@
 # Which will produce some cells with only one optimal decision
 # When varying the risk-related parameters
 
-import sys
 import os
 
 #####################################################################################################################
@@ -23,11 +22,11 @@ vuln2_opts = ["-4.597", "-4.1", "-3.804"]
 ##########################################################################
 # Set up potential decision attributes
 # Cost per day of work lost:
-cost_per_day = 100
+cost_per_day = 200
 # Cost attributes of each of the 3 decisions + objective scores
-dec_attributes = np.array([[0, 0, 0, 5],
-                           [100, 40, 40, 7],
-                           [500, 2, 80, 4]])
+dec_attributes = np.array([[0, 0, 5],
+                           [300, 0.4, 7],
+                           [600, 0.8, 4]])
 # Relative weighting of priorities
 c_weight_cost = 0.8 
 cweights = [float(c_weight_cost),1-float(c_weight_cost)]
