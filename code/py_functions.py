@@ -73,35 +73,46 @@ def decision_single_cell(ind,
                         cweights):
     # state of nature (risk)
     xi = EAI[ind[0][index],ind[1][index],:]
+     # If EAI in a region is < 0, we will set it to 0
+    xi[np.where(xi < 0)] = 0
     # no. of people/jobs in each location
     ppl = Exp[ind[0][index],ind[1][index]]
-
-    # calculate cost of each decision option for each of the 1000 GAM samples of risk
-    cost = np.empty([nd,1000])
-    for j in range(nd):
-        for k in range(1000):
-            # cost outcome for decision j and sample k = cost per person + cost per day + cost from days lost (EAI) with impact reduced as a result
-            cost[j,k] = decision_inputs[j, 0]*ppl + decision_inputs[j, 1]*(10**xi[k] - 1) + cost_per_day*(1-decision_inputs[j, 2]/100)*(10**xi[k] - 1)
+    # If exposure in a region is 0, the decision should always be "do nothing"
+    if ppl <= 0:
+        opd = 1
+        exp_util = np.full(nd, np.nan)
+        util_scores = np.full([nd, 1000], np.nan)
+        cost = np.full([nd, 1000], np.nan)
+    # If there is exposure, find the Bayes optimal decision
+    else:
+        # calculate cost of each decision option for each of the 1000 GAM samples of risk
+        cost = np.empty([nd,1000])
+        for j in range(nd): # loop over number of decisions [do this in parallel?]
+            for k in range(1000): # loop over GAM samples
+                EAI_k = (10**xi[k] - 1)
+                # cost outcome for decision j and sample k
+                # QUESTION: Check that I'm converting from EAI to risk properly
+                cost[j,k] = decision_inputs[j, 0]*ppl + cost_per_day*(1-decision_inputs[j, 1])*EAI_k
         
-    # 2. Meeting ojectives - this is input by the decision maker
-    meet_obs = decision_inputs[:,3]/10
+        # Meeting objectives scores
+        meet_obs = decision_inputs[:,2]/10
 
-    # Calculate the utility of each decision attribute (cost and meeting objectives), i.e. the value of different
-    # values of each to the decision maker - here assuming a linear
-    # utility but this could be elicited from the decision maker (i.e. how risk averse they are)
-    util_cost = 1 + (-1 /cost.max()) * cost
-    util_meet_obs = meet_obs
+        # Calculate the utility of each decision attribute (cost and meeting objectives), i.e. the value of different
+        # values of each to the decision maker - here assuming a linear
+        # utility but this could be elicited from the decision maker (i.e. how risk averse they are)
+        util_cost = 1 + (-1 /cost.max()) * cost
+        util_meet_obs = meet_obs
 
         # calculate the overall utility (value) of each decision option for each sample of risk
-    util_scores = np.empty([nd, 1000])
-    for j in range(nd):
-        util_scores[j,:] = cweights[0] * util_cost[j,:] + cweights[1] * util_meet_obs[j]
-    # find expected (mean) utility
-    exp_util = np.empty(nd)
-    for j in range(nd):
-        exp_util[j] = np.mean(util_scores[j,:])
-    #find which decision optimises the expected utility
-    opd = np.where(exp_util == max(exp_util))[0] + 1 #(add one because python indexing starts at 0)
+        util_scores = np.empty([nd, 1000])
+        for j in range(nd):
+            util_scores[j,:] = cweights[0] * util_cost[j,:] + cweights[1] * util_meet_obs[j]
+        # find expected (mean) utility
+        exp_util = np.empty(nd)
+        for j in range(nd):
+            exp_util[j] = np.mean(util_scores[j,:])
+        #find which decision optimises the expected utility
+        opd = np.where(exp_util == max(exp_util))[0] + 1 #(add one because python indexing starts at 0)
 
     # Return: optimal decision, expected utility, utility scores, cost
     return opd, exp_util, util_scores, cost
@@ -131,47 +142,9 @@ def write_decision_file(output_data_path,
 
     nloc = ind[0].shape[0]
     opd = np.empty(nloc)
-    for i in range(nloc):
-        # state of nature (risk)
-        xi = EAI[ind[0][i],ind[1][i],:]
-        # If EAI in a region is < 0, we will set it to 0
-        xi[np.where(xi < 0)] = 0
-        # no. of people/jobs in each location
-        ppl = Exp[ind[0][i],ind[1][i]]
-        # If exposure in a region is 0, the decision should always be "do nothing"
-        if ppl <= 0:
-            opd[i] = 1
-        # If there is exposure, find the Bayes optimal decision
-        else: 
-            # calculate cost of each decision option for each of the 1000 GAM samples of risk
-            cost = np.empty([nd,1000])
-            for j in range(nd):
-                for k in range(1000):
-                    # cost outcome for decision j and sample k = cost per person + cost per day + cost from days lost (EAI) with impact reduced as a result
-                    # QUESTION: Should I be scaling by 100 even when cost per day isn't 100?
-                    # QUESTION: Check that I'm converting from EAI to risk properly
-                    cost[j,k] = decision_inputs[j, 0]*ppl + decision_inputs[j, 1]*(10**xi[k] - 1) + cost_per_day*(1-decision_inputs[j, 2]/100)*(10**xi[k] - 1)
-            
-            # 2. Meeting ojectives - this is input by the decision maker
-            meet_obs = decision_inputs[:,3]/10
-
-            # Calculate the utility of each decision attribute (cost and meeting objectives), i.e. the value of different
-            # values of each to the decision maker - here assuming a linear
-            # utility but this could be elicited from the decision maker (i.e. how risk averse they are)
-            # QUESTION: Should utility be scaled by maximum cost in all cells (as it is here), or maximum cost in just that cell?
-            util_cost = 1 + (-1 /cost.max()) * cost
-            util_meet_obs = meet_obs
-
-            # calculate the overall utility (value) of each decision option for each sample of risk
-            util_scores = np.empty([nd, 1000])
-            for j in range(nd):
-                util_scores[j,:] = cweights[0] * util_cost[j,:] + cweights[1] * util_meet_obs[j]
-            # find expected (mean) utility
-            exp_util = np.empty(nd)
-            for j in range(nd):
-                exp_util[j] = np.mean(util_scores[j,:])
-            #find which decision optimises the expected utility
-            opd[i] = np.where(exp_util == max(exp_util))[0] + 1 #(add one because python indexing starts at 0)
+    for i in range(nloc): # 1711 locations
+        opd_i, exp_util_i, util_scores_i, cost_i = decision_single_cell(ind, i, EAI, Exp, nd, decision_inputs, cost_per_day, cweights)
+        opd[i] = opd_i
 
     #save out optimal decision in each grid cell as a csv
     outputd = {'lon':lon,'lat':lat,'optimal_decision':opd}
