@@ -45,6 +45,7 @@ ind, lat, lon = get_ind_lat_lon(Exp_array,
 # Cost per day and cost vs. meeting objectives weight
 cost_per_day = 200
 c_weight_cost = 1 # Going all financial cost
+# c_weight_cost = 0.8 # default value
 #criterion weights
 cweights = [float(c_weight_cost),1-float(c_weight_cost)]
 

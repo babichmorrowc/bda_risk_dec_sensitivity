@@ -25,78 +25,141 @@ vuln2_opts = ["-4.597", "-4.1", "-3.804"]
 cost_per_day = 200
 # Cost attributes of each of the 3 decisions + objective scores
 dec_attributes = np.array([[0, 0, 5],
-                           [300, 0.4, 7],
+                           [200, 0.4, 6],
                            [600, 0.8, 4]])
 # Relative weighting of priorities
 c_weight_cost = 0.8 
 cweights = [float(c_weight_cost),1-float(c_weight_cost)]
 
 ###########################################################################
-# # Test in London
-# # lon = -0.0920587, lat = 51.471443
-# lon_ind = 241
+# Plot loss functions
 
-# # Create empty list to store optimal decisions in each location
-# lon_results = []
+# Define a sequence of numbers for x axis
+x = np.linspace(0,6,200)
 
-# # Loop over all combinations of risk parameters
-# for ssp in ssp_opts:
-#     for warm in warming_opts:
-#         # Exposure depends on SSP and SSP year (which comes from warming level)
-#         # Get SSP year to use based on warming level
-#         if warm == "2deg":
-#             ssp_year = 2041
-#         else:
-#             ssp_year = 2084
-#         # Get array of exposure in each cell
-#         Exp_array = get_Exp(input_data_path = '../data/',
-#                             ssp = ssp,
-#                             ssp_year = ssp_year)
-#         for cal in calibration_opts:
-#             for vuln1 in vuln1_opts:
-#                 for vuln2 in vuln2_opts:
-#                     # Get array of EAI
-#                     EAI_array = get_EAI(input_data_path = '../data/',
-#                                         data_source = cal,
-#                                         warming_level = warm,
-#                                         ssp = ssp,
-#                                         vp1 = vuln1,
-#                                         vp2 = vuln2)
+# Define inputs
+nd = 3
 
-#                     ind, lat, lon = get_ind_lat_lon(Exp_array,
-#                                                     '../data/',
-#                                                     data_source = cal,
-#                                                     warming_level = warm,
-#                                                     ssp = ssp,
-#                                                     vp1 = vuln1,
-#                                                     vp2 = vuln2)
+# Set up a 3 column figure
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18,6))
 
-#                     # Get decision in the cell
-#                     lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell(
-#                         ind = ind,
-#                         index = lon_ind,
-#                         EAI = EAI_array,
-#                         Exp = Exp_array,
-#                         nd = 3,
-#                         decision_inputs = dec_attributes,
-#                         cost_per_day = cost_per_day,
-#                         cweights = cweights
-#                     )
-#                     lon_results.append({'ssp': ssp,
-#                                         'warm': warm,
-#                                         'cal': cal,
-#                                         'vuln1': vuln1,
-#                                         'vuln2': vuln2,
-#                                         'opt_dec': lon_opd[0]})
+p = 100 # 100 jobs in location
+cost = np.empty([nd,len(x)])
+for j in range(nd):
+    for k in range(len(x)):
+        # cost[j,k] = decision_inputs[j, 0]*ppl + cost_per_day*(1-decision_inputs[j, 1])*EAI_k
+        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost = np.log10(cost)
+ax1.plot(x,log_cost[0,:],label='Do nothing',color='black')
+ax1.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
+ax1.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+# ax1.plot(10 ** x,cost[0,:],label='Do nothing',color='black')
+# ax1.plot(10 ** x,cost[1,:],label='Modify working hours',color='lawngreen')
+# ax1.plot(10 ** x,cost[2,:],label='Buy cooling equipment',color='magenta')
+ax1.set_xlabel('EAI in grid cell (log base 10)')
+ax1.set_ylabel('Cost, £ (log base 10)')
+ax1.legend()
+ax1.title.set_text('100 jobs')
 
-# # Convert to dataframe
-# lon_results_df = pd.DataFrame(lon_results)
+p = 1000 # 1000 jobs in location
+cost = np.empty([nd,len(x)])
+for j in range(nd):
+    for k in range(len(x)):
+        # cost[j,k] = decision_inputs[j, 0]*ppl + cost_per_day*(1-decision_inputs[j, 1])*EAI_k
+        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost = np.log10(cost)
+ax2.plot(x,log_cost[0,:],label='Do nothing',color='black')
+ax2.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
+ax2.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+ax2.set_xlabel('EAI in grid cell (log base 10)')
+ax2.set_ylabel('Cost, £ (log base 10)')
+ax2.legend()
+ax2.title.set_text('1000 jobs')
 
-# # See counts of types of decisions
-# np.unique(lon_results_df[['opt_dec']], return_counts = True)
+p = 10000 # 10000 jobs in location
+cost = np.empty([nd,len(x)])
+for j in range(nd):
+    for k in range(len(x)):
+        # cost[j,k] = decision_inputs[j, 0]*ppl + cost_per_day*(1-decision_inputs[j, 1])*EAI_k
+        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost = np.log10(cost)
+ax3.plot(x,log_cost[0,:],label='Do nothing',color='black')
+ax3.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
+ax3.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+ax3.set_xlabel('EAI in grid cell (log base 10)')
+ax3.set_ylabel('Cost, £ (log base 10)')
+ax3.legend()
+ax3.title.set_text('10000 jobs')
 
-# # See rows where the decision was 2
-# lon_results_df[lon_results_df['opt_dec'] == 2]
+plt.show()
+
+
+###########################################################################
+# Test in London
+# lon = -0.0920587, lat = 51.471443
+lon_ind = 241
+
+# Create empty list to store optimal decisions in each location
+lon_results = []
+
+# Loop over all combinations of risk parameters
+for ssp in ssp_opts:
+    for warm in warming_opts:
+        # Exposure depends on SSP and SSP year (which comes from warming level)
+        # Get SSP year to use based on warming level
+        if warm == "2deg":
+            ssp_year = 2041
+        else:
+            ssp_year = 2084
+        # Get array of exposure in each cell
+        Exp_array = get_Exp(input_data_path = '../data/',
+                            ssp = ssp,
+                            ssp_year = ssp_year)
+        for cal in calibration_opts:
+            for vuln1 in vuln1_opts:
+                for vuln2 in vuln2_opts:
+                    # Get array of EAI
+                    EAI_array = get_EAI(input_data_path = '../data/',
+                                        data_source = cal,
+                                        warming_level = warm,
+                                        ssp = ssp,
+                                        vp1 = vuln1,
+                                        vp2 = vuln2)
+
+                    ind, lat, lon = get_ind_lat_lon(Exp_array,
+                                                    '../data/',
+                                                    data_source = cal,
+                                                    warming_level = warm,
+                                                    ssp = ssp,
+                                                    vp1 = vuln1,
+                                                    vp2 = vuln2)
+
+                    # Get decision in the cell
+                    lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell(
+                        ind = ind,
+                        index = lon_ind,
+                        EAI = EAI_array,
+                        Exp = Exp_array,
+                        nd = 3,
+                        decision_inputs = dec_attributes,
+                        cost_per_day = cost_per_day,
+                        cweights = cweights
+                    )
+                    lon_results.append({'ssp': ssp,
+                                        'warm': warm,
+                                        'cal': cal,
+                                        'vuln1': vuln1,
+                                        'vuln2': vuln2,
+                                        'opt_dec': lon_opd[0]})
+
+# Convert to dataframe
+lon_results_df = pd.DataFrame(lon_results)
+
+# See counts of types of decisions
+np.unique(lon_results_df[['opt_dec']], return_counts = True)
+
+# See rows where the decision was 2
+lon_results_df[lon_results_df['opt_dec'] == 2]
 
 ###########################################################################
 # Start writing decision files
