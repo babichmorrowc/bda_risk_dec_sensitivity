@@ -33,7 +33,7 @@ def_vuln2 = "-4.1"
 cost_per_day = 200
 # Cost attributes of each of the 3 decisions + objective scores
 dec_attributes = np.array([[0, 0, 5],
-                           [300, 0.4, 6],
+                           [250, 0.4, 6],
                            [600, 0.8, 4]])
 # Relative weighting of priorities
 c_weight_cost = 0.8 
@@ -52,43 +52,42 @@ nd = 3
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18,6))
 
 p = 100 # 100 jobs in location
-cost = np.empty([nd,len(x)])
+cost_100 = np.empty([nd,len(x)])
 for j in range(nd):
     for k in range(len(x)):
-        # cost[j,k] = decision_inputs[j, 0]*ppl + cost_per_day*(1-decision_inputs[j, 1])*EAI_k
-        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
-log_cost = np.log10(cost)
-ax1.plot(x,log_cost[0,:],label='Do nothing',color='black')
-ax1.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
-ax1.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+        cost_100[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost_100 = np.log10(cost_100)
+ax1.plot(x,log_cost_100[0,:],label='Do nothing',color='black')
+ax1.plot(x,log_cost_100[1,:],label='Modify working hours',color='lawngreen')
+ax1.plot(x,log_cost_100[2,:],label='Buy cooling equipment',color='magenta')
 ax1.set_xlabel('EAI in grid cell (log base 10)')
 ax1.set_ylabel('Cost, £ (log base 10)')
 ax1.legend()
 ax1.title.set_text('100 jobs')
 
 p = 1000 # 1000 jobs in location
-cost = np.empty([nd,len(x)])
+cost_1000 = np.empty([nd,len(x)])
 for j in range(nd):
     for k in range(len(x)):
-        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
-log_cost = np.log10(cost)
-ax2.plot(x,log_cost[0,:],label='Do nothing',color='black')
-ax2.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
-ax2.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+        cost_1000[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost_1000 = np.log10(cost_1000)
+ax2.plot(x,log_cost_1000[0,:],label='Do nothing',color='black')
+ax2.plot(x,log_cost_1000[1,:],label='Modify working hours',color='lawngreen')
+ax2.plot(x,log_cost_1000[2,:],label='Buy cooling equipment',color='magenta')
 ax2.set_xlabel('EAI in grid cell (log base 10)')
 ax2.set_ylabel('Cost, £ (log base 10)')
 ax2.legend()
 ax2.title.set_text('1000 jobs')
 
 p = 10000 # 10000 jobs in location
-cost = np.empty([nd,len(x)])
+cost_10000 = np.empty([nd,len(x)])
 for j in range(nd):
     for k in range(len(x)):
-        cost[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
-log_cost = np.log10(cost)
-ax3.plot(x,log_cost[0,:],label='Do nothing',color='black')
-ax3.plot(x,log_cost[1,:],label='Modify working hours',color='lawngreen')
-ax3.plot(x,log_cost[2,:],label='Buy cooling equipment',color='magenta')
+        cost_10000[j, k] = dec_attributes[j, 0] * p + cost_per_day * (1 - dec_attributes[j, 1]) * (10 ** x[k])
+log_cost_10000 = np.log10(cost_10000)
+ax3.plot(x,log_cost_10000[0,:],label='Do nothing',color='black')
+ax3.plot(x,log_cost_10000[1,:],label='Modify working hours',color='lawngreen')
+ax3.plot(x,log_cost_10000[2,:],label='Buy cooling equipment',color='magenta')
 ax3.set_xlabel('EAI in grid cell (log base 10)')
 ax3.set_ylabel('Cost, £ (log base 10)')
 ax3.legend()
@@ -98,8 +97,8 @@ plt.show()
 
 
 ###########################################################################
-# Test in London to ensure there is only one optimal decision
-# lon = -0.0920587, lat = 51.471443
+# # Test in London to ensure there is only one optimal decision
+# # lon = -0.0920587, lat = 51.471443
 # lon_ind = 241
 
 # # Create empty list to store optimal decisions in each location
@@ -200,7 +199,7 @@ print(end - start)
 np.unique(test_decision['optimal_decision'], return_counts=True)
 
 # Plot the optimal decision in each location using all the defaults
-test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_d2_200.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
+test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
 plt.show()
 
 
