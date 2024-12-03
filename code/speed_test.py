@@ -122,6 +122,7 @@ lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell_jit(
                     )
 end = time.time()
 print("Time taken for decision_single_cell with jit INCLUDING compilation:", end - start)
+# 0.021577119827270508
 
 # Time all runs of decision_single_cell WITH jit
 # Create empty list to store optimal decisions in each location
@@ -182,6 +183,88 @@ print("Time taken for decision_single_cell with jit:", end - start)
 # For 162 iterations
 
 ##########################################################################
+# Time the first run of decision_single_cell WITH jit AND parallel
+# This includes compilation time
+start = time.time()
+lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell_jit_parallel(
+                        ind = def_ind,
+                        index = lon_ind,
+                        EAI = def_EAI_array,
+                        Exp = def_Exp_array,
+                        nd = 3,
+                        decision_inputs = dec_attributes,
+                        cost_per_day = cost_per_day,
+                        cweights = cweights
+                    )
+end = time.time()
+print("Time taken for decision_single_cell with jit / parallel INCLUDING compilation:", end - start)
+# 2.1169559955596924
+
+# Parallel diagnostics
+decision_single_cell_jit_parallel.parallel_diagnostics(level=4)
+
+# Time all runs of decision_single_cell WITH jit
+# Create empty list to store optimal decisions in each location
+par_results = []
+# Loop over all combinations of risk parameters
+start = time.time()
+for ssp in ssp_opts:
+    for warm in warming_opts:
+        # Exposure depends on SSP and SSP year (which comes from warming level)
+        # Get SSP year to use based on warming level
+        if warm == "2deg":
+            ssp_year = 2041
+        else:
+            ssp_year = 2084
+        # Get array of exposure in each cell
+        Exp_array = get_Exp(input_data_path = '../data/',
+                            ssp = ssp,
+                            ssp_year = ssp_year)
+        for cal in calibration_opts:
+            for vuln1 in vuln1_opts:
+                for vuln2 in vuln2_opts:
+                    # Get array of EAI
+                    EAI_array = get_EAI(input_data_path = '../data/',
+                                        data_source = cal,
+                                        warming_level = warm,
+                                        ssp = ssp,
+                                        vp1 = vuln1,
+                                        vp2 = vuln2)
+
+                    ind, lat, lon = get_ind_lat_lon(Exp_array,
+                                                    '../data/',
+                                                    data_source = cal,
+                                                    warming_level = warm,
+                                                    ssp = ssp,
+                                                    vp1 = vuln1,
+                                                    vp2 = vuln2)
+
+                    # Get decision in the cell
+                    par_opd, par_exp_util, par_util_scores, par_cost = decision_single_cell_jit_parallel(
+                        ind = ind,
+                        index = lon_ind,
+                        EAI = EAI_array,
+                        Exp = Exp_array,
+                        nd = 3,
+                        decision_inputs = dec_attributes,
+                        cost_per_day = cost_per_day,
+                        cweights = cweights
+                    )
+                    par_results.append({'ssp': ssp,
+                                        'warm': warm,
+                                        'cal': cal,
+                                        'vuln1': vuln1,
+                                        'vuln2': vuln2,
+                                        'opt_dec': lon_opd[0]})
+end = time.time()
+print("Time taken for decision_single_cell with jit and parallel:", end - start)
+# 4.7327046394348145 seconds
+# For 162 iterations
+
+# Test that the results are the same
+lon_results == par_results
+
+##########################################################################
 # Time writing an entire file without jit
 
 start = time.time()
@@ -219,6 +302,32 @@ test_decision = write_decision_file_jit(output_data_path = "../data/test/",
 end = time.time()
 print("Time taken for write_decision_file_jit using jit:", end - start)
 # 0.21112728118896484 WOOOOOOHOOOOOOOO
+
+# Plot the optimal decision in each location using all the defaults
+test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
+plt.show()
+
+##########################################################################
+# Time writing an entire file with jit and parallel
+start = time.time()
+test_decision = write_decision_file_jit_parallel(output_data_path = "../data/test/",
+                    overwrite = True,
+                    ind = def_ind,
+                    lat = def_lat,
+                    lon = def_lon,
+                    EAI = def_EAI_array,
+                    Exp = def_Exp_array,
+                    nd = 3,
+                    decision_inputs = dec_attributes,
+                    cost_per_day = cost_per_day,
+                    cweights = cweights,
+                    risk_input_string = 'defaults')
+end = time.time()
+print("Time taken for write_decision_file_jit using jit and parallel:", end - start)
+# 0.516772985458374
+
+# Parallel diagnostics
+write_decision_file_jit_parallel.parallel_diagnostics(level=4)
 
 # Plot the optimal decision in each location using all the defaults
 test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
@@ -266,7 +375,7 @@ for ssp in ssp_opts:
 
                     # Write decision file
                     write_decision_file_jit(output_data_path = '../data/decision_files_jit/',
-                        overwrite = False,
+                        overwrite = True,
                         ind = ind,
                         lat = lat,
                         lon = lon,
@@ -279,6 +388,66 @@ for ssp in ssp_opts:
                         risk_input_string = risk_input_string)
 end = time.time()
 print("Time taken for writing all decision files with jit:", end - start)
+# 15.856331825256348
+# For 162 files
+
+##########################################################################
+# Time writing a file for all combinations of risk parameters
+# Start writing decision files for all combinations of risk parameters (at default decision parameters)
+# Loop over all combinations of risk parameters
+start = time.time()
+for ssp in ssp_opts:
+    for warm in warming_opts:
+        # Exposure depends on SSP and SSP year (which comes from warming level)
+        # Get SSP year to use based on warming level
+        if warm == "2deg":
+            ssp_year = 2041
+        else:
+            ssp_year = 2084
+        # Get array of exposure in each cell
+        Exp_array = get_Exp(input_data_path = '../data/',
+                            ssp = ssp,
+                            ssp_year = ssp_year)
+        for cal in calibration_opts:
+            for vuln1 in vuln1_opts:
+                for vuln2 in vuln2_opts:
+                    # String of risk inputs
+                    risk_input_string = 'ssp'+ssp+'_'+warm+'_'+cal+'_v1_'+vuln1+'_v2_'+vuln2
+                    print(risk_input_string)
+
+                    # Get array of EAI
+                    EAI_array = get_EAI(input_data_path = '../data/',
+                                        data_source = cal,
+                                        warming_level = warm,
+                                        ssp = ssp,
+                                        vp1 = vuln1,
+                                        vp2 = vuln2)
+
+                    ind, lat, lon = get_ind_lat_lon(Exp_array,
+                                                    '../data/',
+                                                    data_source = cal,
+                                                    warming_level = warm,
+                                                    ssp = ssp,
+                                                    vp1 = vuln1,
+                                                    vp2 = vuln2)
+
+                    # Write decision file
+                    write_decision_file_jit_parallel(output_data_path = '../data/decision_files_jit/',
+                        overwrite = True,
+                        ind = ind,
+                        lat = lat,
+                        lon = lon,
+                        EAI = EAI_array,
+                        Exp = Exp_array,
+                        nd = 3,
+                        decision_inputs = dec_attributes,
+                        cost_per_day = cost_per_day,
+                        cweights = cweights,
+                        risk_input_string = risk_input_string)
+end = time.time()
+print("Time taken for writing all decision files with jit and parallel:", end - start)
+# 14.94858694076538
+# For 162 files
 
 ###########################################################################
 # Plot number of optimal decisions per cell
