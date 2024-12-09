@@ -1,0 +1,36 @@
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
+import cartopy.crs as ccrs
+import pandas as pd
+
+####################################################################################
+# PLOTTING FUNCTIONS
+
+# Function to plot a location on the map given its index (for troubleshooting)
+def plot_index(index):
+    fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+    # Pick a random data file (all the lat / lons are the same)
+    dat = pd.read_csv('../data/new_runs/vary_dec_attr/OptimalDecision_d2_80.0_20.0_50.0_7.0_d3_500.0_2.0_80.0_4.0.csv')
+    # Plot all points in grey
+    ax.scatter(dat['lon'], dat['lat'], c="grey", s=12)
+    # Subset to desired index
+    dat_ind = dat.loc[index]
+    ax.scatter(dat_ind['lon'],dat_ind['lat'],c="red",s=12)
+    ax.set_xlabel('Longitude')
+    ax.set_ylabel('Latitude')
+    ax.coastlines()
+    return fig
+
+# Function to plot decision outcomes on the map given the file name
+def plot_decision_map(file_name):
+    fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+    dat = pd.read_csv(file_name)
+    cols = ListedColormap(['black','lawngreen','magenta'])
+    classes = ['Do nothing','Modify working hours','Buy cooling equipment']
+    scatter = ax.scatter(dat['lon'],dat['lat'],c=dat['optimal_decision'],cmap=cols,s=12)
+    ax.legend(handles=scatter.legend_elements()[0], labels=classes)
+    ax.set_xlabel('Longitude')
+    ax.set_ylabel('Latitude')
+    ax.coastlines()
+    return fig

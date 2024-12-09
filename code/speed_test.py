@@ -9,7 +9,7 @@ import time
 # Add the directory containing py_functions.py to the Python path
 # os.getcwd()
 os.chdir("./code")
-from py_functions import *
+from bda_functions import *
 
 ##########################################################################
 # Set up range of risk options to vary

@@ -6,11 +6,12 @@ import os
 import time
 
 ##########################################################################
-# Import functions defined in py_functions.py
-# Add the directory containing py_functions.py to the Python path
+# Import my functions
+# Add the directory containing the functions to the Python path
 # os.getcwd()
 os.chdir("./code")
-from py_functions import *
+from bda_functions import *
+from plotting_functions import *
 
 ##########################################################################
 # Set up range of risk options to vary

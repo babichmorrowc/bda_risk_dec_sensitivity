@@ -1,16 +1,8 @@
 # Code to create Latin hypercube samples for the decision-related parameters
 
-import os
 import safepython.sampling as sampling
 import scipy.stats as st
 import numpy as np
-
-##########################################################################
-# Import functions defined in py_functions.py
-# Add the directory containing py_functions.py to the Python path
-# os.getcwd()
-# os.chdir("./code")
-# from py_functions import *
 
 ##################################################################################################################
 # Latin Hypercube sampling
@@ -57,3 +49,5 @@ X_lat_hyp[:,3] = np.round(X_lat_hyp[:,3], 2)
 
 # Save the Latin Hypercube samples
 np.savetxt('./data/lat_hyp_samples_' + str(n_samples) + '.csv', X_lat_hyp, delimiter=',')
+
+
