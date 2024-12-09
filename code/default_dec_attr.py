@@ -180,7 +180,7 @@ def_ind, def_lat, def_lon = get_ind_lat_lon(def_Exp_array,
 
 # Time the function
 start = time.time()
-test_decision = write_decision_file(output_data_path = "../data/test/",
+test_decision = write_decision_file_jit(output_data_path = "../data/test/",
                     overwrite = True,
                     ind = def_ind,
                     lat = def_lat,
@@ -242,7 +242,7 @@ for ssp in ssp_opts:
                                                     vp2 = vuln2)
 
                     # Write decision file
-                    write_decision_file(output_data_path = '../data/decision_files/',
+                    write_decision_file_jit(output_data_path = '../data/decision_files/',
                         overwrite = False,
                         ind = ind,
                         lat = lat,
