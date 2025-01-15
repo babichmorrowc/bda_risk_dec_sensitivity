@@ -43,63 +43,63 @@ cweights = np.array([float(c_weight_cost),1-float(c_weight_cost)])
 # # Test in London 
 lon_ind = 241
 
-# # Create empty list to store optimal decisions in each location
-# lon_results = []
+# Create empty list to store optimal decisions in each location
+lon_results_og = []
 
-# # Loop over all combinations of risk parameters
-# start = time.time()
-# for ssp in ssp_opts:
-#     for warm in warming_opts:
-#         # Exposure depends on SSP and SSP year (which comes from warming level)
-#         # Get SSP year to use based on warming level
-#         if warm == "2deg":
-#             ssp_year = 2041
-#         else:
-#             ssp_year = 2084
-#         # Get array of exposure in each cell
-#         Exp_array = get_Exp(input_data_path = '../data/',
-#                             ssp = ssp,
-#                             ssp_year = ssp_year)
-#         for cal in calibration_opts:
-#             for vuln1 in vuln1_opts:
-#                 for vuln2 in vuln2_opts:
-#                     # Get array of EAI
-#                     EAI_array = get_EAI(input_data_path = '../data/',
-#                                         data_source = cal,
-#                                         warming_level = warm,
-#                                         ssp = ssp,
-#                                         vp1 = vuln1,
-#                                         vp2 = vuln2)
+# Loop over all combinations of risk parameters
+start = time.time()
+for ssp in ssp_opts:
+    for warm in warming_opts:
+        # Exposure depends on SSP and SSP year (which comes from warming level)
+        # Get SSP year to use based on warming level
+        if warm == "2deg":
+            ssp_year = 2041
+        else:
+            ssp_year = 2084
+        # Get array of exposure in each cell
+        Exp_array = get_Exp(input_data_path = '../data/',
+                            ssp = ssp,
+                            ssp_year = ssp_year)
+        for cal in calibration_opts:
+            for vuln1 in vuln1_opts:
+                for vuln2 in vuln2_opts:
+                    # Get array of EAI
+                    EAI_array = get_EAI(input_data_path = '../data/',
+                                        data_source = cal,
+                                        warming_level = warm,
+                                        ssp = ssp,
+                                        vp1 = vuln1,
+                                        vp2 = vuln2)
 
-#                     ind, lat, lon = get_ind_lat_lon(Exp_array,
-#                                                     '../data/',
-#                                                     data_source = cal,
-#                                                     warming_level = warm,
-#                                                     ssp = ssp,
-#                                                     vp1 = vuln1,
-#                                                     vp2 = vuln2)
+                    ind, lat, lon = get_ind_lat_lon(Exp_array,
+                                                    '../data/',
+                                                    data_source = cal,
+                                                    warming_level = warm,
+                                                    ssp = ssp,
+                                                    vp1 = vuln1,
+                                                    vp2 = vuln2)
 
-#                     # Get decision in the cell
-#                     lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell(
-#                         ind = ind,
-#                         index = lon_ind,
-#                         EAI = EAI_array,
-#                         Exp = Exp_array,
-#                         nd = 3,
-#                         decision_inputs = dec_attributes,
-#                         cost_per_day = cost_per_day,
-#                         cweights = cweights
-#                     )
-#                     lon_results.append({'ssp': ssp,
-#                                         'warm': warm,
-#                                         'cal': cal,
-#                                         'vuln1': vuln1,
-#                                         'vuln2': vuln2,
-#                                         'opt_dec': lon_opd[0]})
-# end = time.time()
-# print("Time taken for decision_single_cell without jit:", end - start)
-# # 9.39619517326355 seconds
-# # For 162 iterations
+                    # Get decision in the cell
+                    lon_opd, lon_exp_util, lon_util_scores, lon_cost = decision_single_cell(
+                        ind = ind,
+                        index = lon_ind,
+                        EAI = EAI_array,
+                        Exp = Exp_array,
+                        nd = 3,
+                        decision_inputs = dec_attributes,
+                        cost_per_day = cost_per_day,
+                        cweights = cweights
+                    )
+                    lon_results_og.append({'ssp': ssp,
+                                        'warm': warm,
+                                        'cal': cal,
+                                        'vuln1': vuln1,
+                                        'vuln2': vuln2,
+                                        'opt_dec': lon_opd[0]})
+end = time.time()
+print("Time taken for decision_single_cell without jit:", end - start)
+# 9.39619517326355 seconds
+# For 162 iterations
 
 ##########################################################################
 def_Exp_array = get_Exp('../data/', def_ssp, 2041)
@@ -126,7 +126,7 @@ print("Time taken for decision_single_cell with jit INCLUDING compilation:", end
 
 # Time all runs of decision_single_cell WITH jit
 # Create empty list to store optimal decisions in each location
-lon_results = []
+lon_results_jit = []
 # Loop over all combinations of risk parameters
 start = time.time()
 for ssp in ssp_opts:
@@ -171,7 +171,7 @@ for ssp in ssp_opts:
                         cost_per_day = cost_per_day,
                         cweights = cweights
                     )
-                    lon_results.append({'ssp': ssp,
+                    lon_results_jit.append({'ssp': ssp,
                                         'warm': warm,
                                         'cal': cal,
                                         'vuln1': vuln1,
@@ -182,11 +182,15 @@ print("Time taken for decision_single_cell with jit:", end - start)
 # 3.6322 seconds
 # For 162 iterations
 
+# Check that the results are the same with and without jit
+lon_results_og == lon_results_jit
+# All good!
+
 ##########################################################################
 # Time writing an entire file without jit
 
 start = time.time()
-test_decision = write_decision_file(output_data_path = "../data/test/",
+test_decision_no_jit = write_decision_file(output_data_path = "../data/test/",
                     overwrite = True,
                     ind = def_ind,
                     lat = def_lat,
@@ -197,7 +201,7 @@ test_decision = write_decision_file(output_data_path = "../data/test/",
                     decision_inputs = dec_attributes,
                     cost_per_day = cost_per_day,
                     cweights = cweights,
-                    risk_input_string = 'defaults')
+                    risk_input_string = 'defaults_no_jit')
 end = time.time()
 print("Time taken for write_decision_file without jit:", end - start)
 # 8.554831266403198 seconds
@@ -205,7 +209,7 @@ print("Time taken for write_decision_file without jit:", end - start)
 ##########################################################################
 # Time writing an entire file with jit
 start = time.time()
-test_decision = write_decision_file_jit(output_data_path = "../data/test/",
+test_decision_jit = write_decision_file_jit(output_data_path = "../data/test/",
                     overwrite = True,
                     ind = def_ind,
                     lat = def_lat,
@@ -216,13 +220,17 @@ test_decision = write_decision_file_jit(output_data_path = "../data/test/",
                     decision_inputs = dec_attributes,
                     cost_per_day = cost_per_day,
                     cweights = cweights,
-                    risk_input_string = 'defaults')
+                    risk_input_string = 'defaults_jit')
 end = time.time()
 print("Time taken for write_decision_file_jit using jit:", end - start)
 # 0.21112728118896484 WOOOOOOHOOOOOOOO
 
+# Check that the results are the same
+test_decision_no_jit.equals(test_decision_jit)
+# All good
+
 # Plot the optimal decision in each location using all the defaults
-test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
+test_plot = plot_decision_map("../data/test/OptimalDecision_defaults_jit_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
 plt.show()
 
 ##########################################################################
