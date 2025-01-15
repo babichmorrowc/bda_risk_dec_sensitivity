@@ -37,7 +37,7 @@ dec_attributes = np.array([[0, 0, 5],
                            [600, 0.8, 4]])
 # Relative weighting of priorities
 c_weight_cost = 0.8 
-cweights = [float(c_weight_cost),1-float(c_weight_cost)]
+cweights = [c_weight_cost,1-c_weight_cost]
 
 ###########################################################################
 # Plot loss functions
@@ -195,7 +195,7 @@ test_decision = write_decision_file(output_data_path = "../data/test/",
 end = time.time()
 print(end - start)
 
-# Check number of unique decisions
+# Check number of locations in which each decision is optimal
 np.unique(test_decision['optimal_decision'], return_counts=True)
 
 # Plot the optimal decision in each location using all the defaults
