@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from safepython.PAWN import pawn_split_sample, pawn_ks
 from safepython.util import empiricalcdf, allrange
 
@@ -50,6 +51,9 @@ for i in range(X.shape[0]):
 Y_loc = Y[:,241]
 
 # Run through the original PAWN code
+# For the function pawn_indices
+# https://github.com/SAFEtoolbox/SAFE-python/blob/main/src/safepython/PAWN.py#L213
+# Setting the default parameters
 Nboot=1
 dummy=False
 output_condition=allrange
@@ -59,9 +63,9 @@ par=[]
 # Check inputs and split the input sample
 ###########################################################################
 
-# Using default n value for pawn_split_sample
-# n = 10
-
+# For detail on the code for pawn_split_sample:
+# https://github.com/SAFEtoolbox/SAFE-python/blob/main/src/safepython/PAWN.py#L37
+# Using the default n=10: number of conditioning intervals
 YY, xc, NC, n_eff, Xk, XX = pawn_split_sample(X_numeric, Y_loc, n=10) # this function
 # checks inputs X, Y and n
 # YY: list of length M=11 
@@ -104,7 +108,7 @@ if not callable(output_condition):
 ###########################################################################
 
 # Set points at which the CDFs will be evaluated:
-YF = np.unique(Y) # YF is an array containing 1, 2, and 3
+YF = np.unique(Y_loc) # YF is an array containing 1, 2, and 3
 
 # Initialize sensitivity indices
 KS_median = np.nan * np.ones((Nboot, M))
@@ -211,14 +215,14 @@ for b in range(Nboot): # number of bootstrap resample
     # Compute empirical unconditional CDFs
     for kk in range(N_compute): # loop over the sizes of the unconditional output
 
-        # Bootstrap resapling (Extract an unconditional sample of size
+        # Bootstrap resampling (Extract an unconditional sample of size
         # bootsize_unique[kk] by drawing data points from the full sample Y
         # without replacement
         idx_bootstrap = np.random.choice(np.arange(0, N, 1), # evenly spaced values between 0 and N, spaced by 1
                                          size=(bootsize_unique[kk], ),
                                          replace='False')
         # Compute unconditional CDF:
-        FUkk = empiricalcdf(Y[idx_bootstrap], YF)
+        FUkk = empiricalcdf(Y_loc[idx_bootstrap], YF)
         # Associate the FUkk to all inputs that require an unconditional
         # output of size bootsize_unique[kk]:
         idx_input = np.where([i == bootsize_unique[kk] for i in bootsize])[0]
@@ -234,6 +238,52 @@ for b in range(Nboot): # number of bootstrap resample
     KS_median[b, :] = np.array([np.median(j) for j in KS_all])  # shape (M,)
     KS_mean[b, :] = np.array([np.mean(j) for j in KS_all])  # shape (M,)
     KS_max[b, :] = np.array([np.max(j) for j in KS_all])  # shape (M,)
+
+################################################################################
+
+# Now I want to instead compute the unconditional PMF
+# of YY[i][k] at YF
+
+
+# Initialize unconditional PMFs:
+fU = [np.nan] * M
+bootsize = [int(np.min(i)) for i in NC] # numpy.ndarray(M,)
+bootsize_unique = np.unique(bootsize)
+N_compute = len(bootsize_unique)
+
+# NOTE: I'm skipping the dummy part here
+
+# Compute sensitivity indices with bootstrapping
+for b in range(Nboot): # number of bootstrap resample
+
+    # Compute empirical unconditional CDFs
+    for kk in range(N_compute): # loop over the sizes of the unconditional output
+
+        # Bootstrap resampling (Extract an unconditional sample of size
+        # bootsize_unique[kk] by drawing data points from the full sample Y
+        # without replacement
+        idx_bootstrap = np.random.choice(np.arange(0, N, 1), # evenly spaced values between 0 and N, spaced by 1
+                                         size=(bootsize_unique[kk], ),
+                                         replace='False')
+        # Compute unconditional CDF:
+        fUkk = np.unique(Y_loc[idx_bootstrap], return_counts = True)[1]/len(Y_loc[idx_bootstrap])
+        # Associate the fUkk to all inputs that require an unconditional
+        # output of size bootsize_unique[kk]:
+        idx_input = np.where([i == bootsize_unique[kk] for i in bootsize])[0]
+        for i in range(len(idx_input)):
+            fU[idx_input[i]] = fUkk
+    # Compute KS statistic between conditional and unconditional CDFs:
+    KS_all = pawn_ks(YF, fU, FC, output_condition, par)
+    # KS_all is a list (M elements) and contains the value of the KS for
+    # for each input and each conditioning interval. KS[i] contains values
+    # for the i-th input and the n_eff[i] conditioning intervals, and it
+    # is a numpy.ndarray of shape (n_eff[i], ).
+    #  Take a statistic of KS across the conditioning intervals:
+    KS_median[b, :] = np.array([np.median(j) for j in KS_all])  # shape (M,)
+    KS_mean[b, :] = np.array([np.mean(j) for j in KS_all])  # shape (M,)
+    KS_max[b, :] = np.array([np.max(j) for j in KS_all])  # shape (M,)
+
+#################################################################################
 
 if Nboot == 1:
     KS_median = KS_median.flatten()
