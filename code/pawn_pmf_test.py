@@ -1,6 +1,7 @@
 # Test out the PAWN PMF function
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from safepython import PAWN_pmf
 from safepython import PAWN
 
@@ -28,7 +29,7 @@ counts_final = np.array([Y_sub_count_dict.get(val, 0) for val in np.unique(Y)])
 prop_final = counts_final / len(Y_sub)
 
 ################################################################################
-# Test the function
+# Test the pawn_pmf_indices function
 # Define risk inputs
 calibration_opts = ["UKCP_raw", "UKCP_BC", "ChangeFactor"]
 warming_opts = ["2deg", "4deg"]
@@ -77,96 +78,17 @@ Y_loc = Y[:,241]
 
 # Test out the PAWN pmf function
 test_median, test_mean, test_max = PAWN_pmf.pawn_pmf_indices(X = X_numeric, Y = Y_loc, n = 10)
-# Traceback (most recent call last):
-#   File "<stdin>", line 1, in <module>
-#   File "/home/aw23877/Documents/bda_sensitivity_paper/SAFE-python/src/safepython/PAWN_pmf.py", line 329, in pawn_pmf_indices
-#     KS_all = pawn_ks(YF, fU, fC, output_condition, par)
-#   File "/home/aw23877/Documents/bda_sensitivity_paper/SAFE-python/src/safepython/PAWN.py", line 613, in pawn_ks
-#     KS[i][k] = np.max(abs(FU[i][idx] - FC[i][k][idx]))
-# IndexError: boolean index did not match indexed array along dimension 0; dimension is 2 but corresponding boolean dimension is 3
+test_median
 
-##################################################################################
-# Let's try line-by-line
-X = X_numeric
-Y = Y_loc
-Nboot = 1
-output_conditions = PAWN.allrange
-par = []
+# Test out the PAWN pmf function with bootstrapping
+boot_test_median, boot_test_mean, boot_test_max = PAWN_pmf.pawn_pmf_indices(X = X_numeric, Y = Y_loc, n = 10, Nboot=50)
+boot_test_median
 
-YY, xc, NC, n_eff, Xk, XX = PAWN.pawn_split_sample(X, Y, n = 10) # this function
-# checks inputs X, Y and n
+#########################################################################
+# Test out PMF plotting
+YF, fU, fC, xc = PAWN_pmf.pawn_plot_pmf(X = X_numeric, Y = Y_loc, n_col=5, n = 10, cbar=True)
+plt.show()
 
-Nx = X.shape
-N = Nx[0]
-M = Nx[1]
-
-# Set points at which the PMFs will be evaluated:
-YF = np.unique(Y)
-
- # Initialize sensitivity indices
-KS_median = np.nan * np.ones((Nboot, M))
-KS_mean = np.nan * np.ones((Nboot, M))
-KS_max = np.nan * np.ones((Nboot, M))
-
- # Compute conditional PMFs
-# (bootstrapping is not used to assess conditional PMFs):
-fC = [np.nan] * M
-for i in range(M): # loop over inputs
-    fC[i] = [np.nan] * n_eff[i]
-    for k in range(n_eff[i]): # loop over conditioning intervals
-        fC[i][k] = np.unique(YY[i][k], return_counts=True)[1]/len(YY[i][k])
-
- # Initialize unconditional PMFs:
-fU = [np.nan] * M
-
- # M unconditional PMFs are computed (one for each input), so that for
-# each input the conditional and unconditional PMFs are computed using the
-# same number of data points (when the number of conditioning intervals
-# n_eff[i] varies across the inputs, so does the shape of the conditional
-# outputs YY[i]).
-
- # Determine the sample size for the unconditional output bootsize:
-bootsize = [int(np.min(i)) for i in NC] # numpy.ndarray(M,)
-# bootsize is equal to the sample size of the conditional outputs NC, or
-# its  minimum value across the conditioning intervals when the sample size
-# varies across conditioning intervals as may happen when values of an
-# input are repeated several times (more details on this in the Note in the
-# help of the function).
-
- # To reduce the computational time (the calculation of empirical PMF is
-# costly), the unconditional PMF is computed only once for all inputs that
-# have the same value of bootsize[i].
-bootsize_unique = np.unique(bootsize)
-N_compute = len(bootsize_unique)
-
-# Compute sensitivity indices with bootstrapping
-for b in range(Nboot): # number of bootstrap resample
-
-     # Compute empirical unconditional PMFs
-    for kk in range(N_compute): # loop over the sizes of the unconditional output
-
-         # Bootstrap resapling (Extract an unconditional sample of size
-        # bootsize_unique[kk] by drawing data points from the full sample Y
-        # without replacement
-        idx_bootstrap = np.random.choice(np.arange(0, N, 1),
-                                         size=(bootsize_unique[kk], ),
-                                         replace='False')
-        # Compute unconditional PMF:
-        fUkk = np.unique(Y[idx_bootstrap], return_counts=True)[1]/len(Y[idx_bootstrap])
-        # Associate the fUkk to all inputs that require an unconditional
-        # output of size bootsize_unique[kk]:
-        idx_input = np.where([i == bootsize_unique[kk] for i in bootsize])[0]
-        for i in range(len(idx_input)):
-            fU[idx_input[i]] = fUkk
-
-     # Compute KS statistic between conditional and unconditional CDFs:
-    KS_all = PAWN.pawn_ks(YF, fU, fC, PAWN.allrange, par)
-    # KS_all is a list (M elements) and contains the value of the KS for
-    # for each input and each conditioning interval. KS[i] contains values
-    # for the i-th input and the n_eff[i] conditioning intervals, and it
-    # is a numpy.ndarray of shape (n_eff[i], ).
-
-     #  Take a statistic of KS across the conditioning intervals:
-    KS_median[b, :] = np.array([np.median(j) for j in KS_all])  # shape (M,)
-    KS_mean[b, :] = np.array([np.mean(j) for j in KS_all])  # shape (M,)
-    KS_max[b, :] = np.array([np.max(j) for j in KS_all])  # shape (M,)
+# Test out KS plotting
+PAWN.pawn_plot_ks(YF, fU, fC, xc)
+plt.show()
