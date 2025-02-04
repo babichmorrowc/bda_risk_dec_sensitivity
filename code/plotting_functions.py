@@ -11,7 +11,7 @@ import pandas as pd
 def plot_index(index):
     fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
     # Pick a random data file (all the lat / lons are the same)
-    dat = pd.read_csv('../data/new_runs/vary_dec_attr/OptimalDecision_d2_80.0_20.0_50.0_7.0_d3_500.0_2.0_80.0_4.0.csv')
+    dat = pd.read_csv('../data/decision_files_jit/OptimalDecision_ssp1_2deg_ChangeFactor_v1_53.78_v2_-3.804_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv')
     # Plot all points in grey
     ax.scatter(dat['lon'], dat['lat'], c="grey", s=12)
     # Subset to desired index

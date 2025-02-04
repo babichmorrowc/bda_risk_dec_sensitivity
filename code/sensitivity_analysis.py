@@ -67,38 +67,40 @@ for i in range(X.shape[0]):
 ################################################################
 # Apply PAWN PMF method to each grid cell
 # Number of inputs:
-M = X.shape[1]
-# PAWN set-up
-Nboot = 100
-n = 10
+# M = X.shape[1]
+# # PAWN set-up
+# Nboot = 100
+# n = 10
 
-max_dist_vals = np.empty((M, nloc_land))
-max_dist_lbs = np.empty((M, nloc_land))
-max_dist_ubs = np.empty((M, nloc_land))
+# max_dist_vals = np.empty((M, nloc_land))
+# max_dist_lbs = np.empty((M, nloc_land))
+# max_dist_ubs = np.empty((M, nloc_land))
 
-for loc in range(nloc_land):
-    print(loc)
-    Y_loc = Y[:,loc]
-    # Check number of decisions in location loc
-    if len(np.unique(Y_loc)) == 1:
-        print('Only one location in location ' + str(loc))
-        # Fill in a row of NaNs
-        max_dist_vals[:,loc] = np.repeat(np.nan, M)
-        max_dist_lbs[:,loc] = np.repeat(np.nan, M)
-        max_dist_ubs[:,loc] = np.repeat(np.nan, M)
-        continue
-    # Otherwise, run PAWN using PMFs
-    max_dist_median, max_dist_mean, max_dist_max = \
-        PAWN_pmf.pawn_pmf_indices(X_numeric, Y_loc, n = n, Nboot = Nboot)
-    max_maxdist_mean, max_maxdist_lb, max_maxdist_ub = aggregate_boot(max_dist_max)
-    max_dist_vals[:,loc] = max_maxdist_mean
-    max_dist_lbs[:,loc] = max_maxdist_lb
-    max_dist_ubs[:,loc] = max_maxdist_ub
+# for loc in range(nloc_land):
+#     print(loc)
+#     Y_loc = Y[:,loc]
+#     # Check number of decisions in location loc
+#     if len(np.unique(Y_loc)) == 1:
+#         print('Only one location in location ' + str(loc))
+#         # Fill in a row of NaNs
+#         max_dist_vals[:,loc] = np.repeat(np.nan, M)
+#         max_dist_lbs[:,loc] = np.repeat(np.nan, M)
+#         max_dist_ubs[:,loc] = np.repeat(np.nan, M)
+#         continue
+#     # Otherwise, run PAWN using PMFs
+#     max_dist_median, max_dist_mean, max_dist_max = \
+#         PAWN_pmf.pawn_pmf_indices(X_numeric, Y_loc, n = n, Nboot = Nboot)
+#     max_maxdist_mean, max_maxdist_lb, max_maxdist_ub = aggregate_boot(max_dist_max)
+#     max_dist_vals[:,loc] = max_maxdist_mean
+#     max_dist_lbs[:,loc] = max_maxdist_lb
+#     max_dist_ubs[:,loc] = max_maxdist_ub
 
 # Save results
 # np.save('./data/pawn_results/max_dist_vals_lhc200.npy', max_dist_vals)
 # np.save('./data/pawn_results/max_dist_lbs_lhc200.npy', max_dist_lbs)
 # np.save('./data/pawn_results/max_dist_ubs_lhc200.npy', max_dist_ubs)
+
+max_dist_vals = np.load('./data/pawn_results/max_dist_vals_lhc200.npy')
 
 ######################################################################
 # Plot map of sensitivity values
@@ -108,6 +110,14 @@ lat = data['lat']
 
 # Get the range of values:
 np.nanmin(max_dist_vals), np.nanmax(max_dist_vals)
+
+# max_dist_vals sensitivity of SSP ranked from high to low
+# removing the nan values
+# np.argsort(max_dist_vals[0,:])[::-1][~np.isnan(max_dist_vals[0,np.argsort(max_dist_vals[0,:])[::-1]])]
+# import os
+# os.chdir("./code")
+# from plotting_functions import *
+# plot_index(1445)
 
 # Make plot with 3 rows x 4 columns
 fig = plt.figure(figsize=(17,12))
