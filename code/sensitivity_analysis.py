@@ -102,12 +102,6 @@ for i in range(X.shape[0]):
 
 max_dist_vals = np.load('./data/pawn_results/max_dist_vals_lhc200.npy')
 
-######################################################################
-# Plot map of sensitivity values
-
-lon = data['lon']
-lat = data['lat']
-
 # Get the range of values:
 np.nanmin(max_dist_vals), np.nanmax(max_dist_vals)
 
@@ -119,95 +113,3 @@ np.nanmin(max_dist_vals), np.nanmax(max_dist_vals)
 # from plotting_functions import *
 # plot_index(1445)
 
-# Make plot with 3 rows x 4 columns
-fig = plt.figure(figsize=(17,12))
-ax1 = plt.subplot(3,4,1,projection=ccrs.PlateCarree())
-ax2 = plt.subplot(3,4,2,projection=ccrs.PlateCarree())
-ax3 = plt.subplot(3,4,3,projection=ccrs.PlateCarree())
-ax4 = plt.subplot(3,4,4,projection=ccrs.PlateCarree())
-ax5 = plt.subplot(3,4,5,projection=ccrs.PlateCarree())
-ax6 = plt.subplot(3,4,6,projection=ccrs.PlateCarree())
-ax7 = plt.subplot(3,4,7,projection=ccrs.PlateCarree())
-ax8 = plt.subplot(3,4,8,projection=ccrs.PlateCarree())
-ax9 = plt.subplot(3,4,9,projection=ccrs.PlateCarree())
-ax10 = plt.subplot(3,4,10,projection=ccrs.PlateCarree())
-ax11 = plt.subplot(3,4,11,projection=ccrs.PlateCarree())
-
-ax1.set_xlabel('Longitude')
-ax1.set_ylabel('Latitude')
-cp = ax1.scatter(lon,lat,c=max_dist_vals[0,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax1,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[0])
-ax1.title.set_text('(a)')
-
-ax2.set_xlabel('Longitude')
-ax2.set_ylabel('Latitude')
-cp = ax2.scatter(lon,lat,c=max_dist_vals[1,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax2,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[1])
-ax2.title.set_text('(b)')
-
-ax3.set_xlabel('Longitude')
-ax3.set_ylabel('Latitude')
-cp = ax3.scatter(lon,lat,c=max_dist_vals[2,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax3,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[2])
-ax3.title.set_text('(c)')
-
-ax4.set_xlabel('Longitude')
-ax4.set_ylabel('Latitude')
-cp = ax4.scatter(lon,lat,c=max_dist_vals[3,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax4,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[3])
-ax4.title.set_text('(d)')
-
-ax5.set_xlabel('Longitude')
-ax5.set_ylabel('Latitude')
-cp = ax5.scatter(lon,lat,c=max_dist_vals[4,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax5,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[4])
-ax5.title.set_text('(e)')
-
-ax6.set_xlabel('Longitude')
-ax6.set_ylabel('Latitude')
-cp = ax6.scatter(lon,lat,c=max_dist_vals[5,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax6,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[5])
-ax6.title.set_text('(f)')
-
-ax7.set_xlabel('Longitude')
-ax7.set_ylabel('Latitude')
-cp = ax7.scatter(lon,lat,c=max_dist_vals[6,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax7,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[6])
-ax7.title.set_text('(g)')
-
-ax8.set_xlabel('Longitude')
-ax8.set_ylabel('Latitude')
-cp = ax8.scatter(lon,lat,c=max_dist_vals[7,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax8,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[7])
-ax8.title.set_text('(h)')
-
-ax9.set_xlabel('Longitude')
-ax9.set_ylabel('Latitude')
-cp = ax9.scatter(lon,lat,c=max_dist_vals[8,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax9,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[8])
-ax9.title.set_text('(i)')
-
-ax10.set_xlabel('Longitude')
-ax10.set_ylabel('Latitude')
-cp = ax10.scatter(lon,lat,c=max_dist_vals[9,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax10,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[9])
-ax10.title.set_text('(j)')
-
-ax11.set_xlabel('Longitude')
-ax11.set_ylabel('Latitude')
-cp = ax11.scatter(lon,lat,c=max_dist_vals[10,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
-cbar = plt.colorbar(cp,ax=ax11,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[10])
-ax11.title.set_text('(k)')
-
-plt.show()
