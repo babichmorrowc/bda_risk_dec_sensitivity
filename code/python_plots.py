@@ -2,12 +2,21 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
+from matplotlib.lines import Line2D
+from matplotlib.colors import ListedColormap, BoundaryNorm, LogNorm
 import cartopy.crs as ccrs
 import safepython.plot_functions as pf 
+from netCDF4 import Dataset
 
 ###########################################################################
 # Set-up
+# Set up range of risk options to vary
+calibration_opts = ["UKCP_raw", "UKCP_BC", "ChangeFactor"]
+warming_opts = ["2deg", "4deg"]
+ssp_opts = ["1", "2", "5"]
+vuln1_opts = ["53.78", "54.5", "55.79"]
+vuln2_opts = ["-4.597", "-4.1", "-3.804"]
+
 # X labels
 X_labels = ['SSP',
             'Warming level',
@@ -21,8 +30,67 @@ X_labels = ['SSP',
             'Effectiveness of d3',
             'Relative importance of financial']
 
+# Color scales
+# Continous
+
+# Discrete, sequential
+# dis_seq_cols = ['#FEE6CE','#FDAE6B','#E6550D']
+# dis_seq_cols = ['#ffeda0','#FDAE6B','#E6550D']
+dis_seq_cols = ['#E9C46A', '#F4A261', '#E76F51']
+dis_seq = ListedColormap(dis_seq_cols)
+# Discrete, nonsequential
+dis_non_cols = ['#40476D', '#5296A5']
+
+# Plotting set-up for uncertainty maps
+levels = [1,2,3,4]
+dis_seq_norm = BoundaryNorm(levels, dis_seq.N)
+legend_labs = ['1 optimal decision', '2 optimal decisions', '3 optimal decisions']
+
 ###########################################################################
-# FIGURE 3B
+# FIGURE 2A
+# Standard deviation of risk in each grid cell
+# Roughly following Laura's code here:
+# https://github.com/babichmorrowc/compass_miniproject/blob/main/code/orig_laura_code/plots_for_paper_python.py#L471
+X_risk = np.array(np.meshgrid(ssp_opts, warming_opts, calibration_opts, vuln1_opts, vuln2_opts)).T.reshape(-1,5)
+
+# can't make full output matrix - memory issues, so calculate combined SD following http://www.obg.cuhk.edu.hk/ResearchSupport/StatTools/CombineMeansSDs_Pgm.php#:~:text=The%20Standard%20Error%20of%20the,sizes%20from%20all%20the%20groups.
+txx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
+tx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
+
+# Pretty slow -- can I jit this somehow?
+for i in range(X_risk.shape[0]):
+    data = Dataset('./data/'+X_risk[i,2]+
+                    '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
+                    '_WL'+X_risk[i,1]+
+                    '_SSP'+X_risk[i,0]+
+                    '_vp1='+X_risk[i,3]+'_vp2='+X_risk[i,4]+'.nc')
+    allEAI = np.array(data.variables['sim_annual_impact'])
+    # land locations have EAI < 9e30
+    allEAI[np.where(allEAI > 9e30)] = 0
+    allEAI = 10**allEAI - 1
+    # get sum of squared eai values across all gam samples
+    txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI)
+    # get sum of eai values across all gam samples
+    tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI)
+
+txx_all1 = np.apply_along_axis(lambda x : sum(x), 2, txx)
+tx_all1 = np.apply_along_axis(lambda x : sum(x), 2, tx)
+
+SDall = np.empty(110*83).reshape(110,83)
+for i in range(110):
+    for j in range(83):
+        SDall[i,j] = np.sqrt((txx_all1[i,j] - tx_all1[i,j]**2/(X_risk.shape[0]*1000))/(X_risk.shape[0]*1000 -1))
+nloc = 110*83
+SDall = SDall.reshape(nloc)
+
+lon = np.array(data.variables['exposure_longitude'])
+lon = lon.reshape(nloc)
+lat = np.array(data.variables['exposure_latitude'])
+lat = lat.reshape(nloc)
+log_norm = LogNorm(vmin=1.0e1, vmax=2.0e6)
+
+###########################################################################
+# FIGURE 2B
 # Varying risk inputs ONLY
 # Plot number of optimal decisions per cell
 
@@ -44,26 +112,51 @@ for i, file_name in enumerate(file_list):
 noptions_risk = np.empty(nloc_land)
 for i in range(1711):
     noptions_risk[i] = len(np.unique(Y_risk[:,i]))
-np.unique(noptions_risk, return_counts = True)
+# np.unique(noptions_risk, return_counts = True)
+noptions_risk = noptions_risk.astype(int)
 
-# List of all possible decisions
-decision_options = np.unique(Y_risk, return_counts = True)
+################################################################################################
+# FIGURE 2
+
+# Plot standard deviation of risk
+fig, axs = plt.subplots(1, 2, figsize=(18,15), layout="constrained", subplot_kw={'projection': ccrs.PlateCarree()})
+# plt.figure(figsize=(18,15))
+# ax1 = plt.subplot(1,2,1,projection=ccrs.PlateCarree())
+axs[0].set_xlabel('Longitude')
+axs[0].set_ylabel('Latitude')
+cp = axs[0].scatter(lon,lat,c=SDall,
+                 norm=log_norm,
+                 s=11,
+                 cmap='Purples')
+cbar = plt.colorbar(cp,ax=axs[0],shrink=0.5)
+cbar.set_label('Standard deviation of Risk')
+axs[0].set_title('(a)')
+axs[0].coastlines()
 
 # Plot number of decisions optimal in each cell
-fig = plt.figure(figsize=(18,15))
 lon_land = data['lon']
 lat_land = data['lat']
-ax1 = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
-ax1.set_xlabel('Longitude')
-ax1.set_ylabel('Latitude')
-cols = ListedColormap(['blue','orange','yellow'])
-classes = ['1 optimal decision','2 optimal decisions','3 optimal decisions']
-scatter = ax1.scatter(lon_land,lat_land,c=noptions_risk,s=12,cmap=cols)
-ax1.legend(handles=scatter.legend_elements()[0], labels=classes)
-ax1.coastlines()
+axs[1].set_xlabel('Longitude')
+axs[1].set_ylabel('Latitude')
+scatter = axs[1].scatter(lon_land,lat_land,c=noptions_risk,s=12,cmap=dis_seq, norm=dis_seq_norm)
+legend_elements = [
+    Line2D([0], [0], marker='o', color='w', label=legend_labs[i], 
+           markersize=10, markerfacecolor=dis_seq_cols[i])
+    for i in range(len(legend_labs))
+]
+axs[1].legend(handles=legend_elements)
+axs[1].set_title('(b)')
+axs[1].coastlines()
+
+# Make sure plot (a) has the same limits
+axs[0].set_xlim(axs[1].get_xlim())
+axs[0].set_ylim(axs[1].get_ylim())
 plt.show()
 
 # # Plot percentage of time that each decision was optimal in a cell
+
+# List of all possible decisions
+# decision_options = np.unique(Y_risk, return_counts = True)
 
 # # Calculate frequencies of each decision per location
 # column_frequencies = {value: [] for value in decision_options[0]}
@@ -124,7 +217,6 @@ plt.show()
 # FIGURE 4B
 # Varying risk AND decision inputs
 # Plot number of optimal decisions per cell
-
 n_samples = 200
 
 # For all runs in the decision_files folder
@@ -142,14 +234,10 @@ for i, file_name in enumerate(file_list):
     data = pd.read_csv(file_path)
     Y_riskdec[i, :] = data['optimal_decision']
 
-
 noptions_riskdec = np.empty(nloc_land)
 for i in range(1711):
     noptions_riskdec[i] = len(np.unique(Y_riskdec[:,i]))
 np.unique(noptions_riskdec, return_counts = True)
-
-# List of all possible decisions
-decision_options = np.unique(Y_riskdec, return_counts = True)
 
 # Plot number of decisions optimal in each cell
 fig = plt.figure(figsize=(18,15))
@@ -158,19 +246,16 @@ lat_land = data['lat']
 ax1 = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
 ax1.set_xlabel('Longitude')
 ax1.set_ylabel('Latitude')
-cols = ListedColormap(['blue',
-                    #    'orange',
-                       'yellow'])
-# norm = BoundaryNorm([1,2,3], cols.N)
-classes = ['1 optimal decision',
-        #    '2 optimal decisions',
-           '3 optimal decisions']
-scatter = ax1.scatter(lon_land,lat_land,c=noptions_riskdec,s=12,cmap=cols)
-ax1.legend(handles=scatter.legend_elements()[0], labels=classes)
+scatter = ax1.scatter(lon_land,lat_land,c=noptions_riskdec,s=12,cmap=dis_seq, norm=dis_seq_norm)
+ax1.legend(handles=legend_elements)
 ax1.coastlines()
 plt.show()
 
 # # Plot percentage of time that each decision was optimal in a cell
+
+
+# # List of all possible decisions
+# decision_options = np.unique(Y_riskdec, return_counts = True)
 
 # # Calculate frequencies of each decision per location
 # column_frequencies = {value: [] for value in decision_options[0]}
@@ -232,14 +317,21 @@ plt.show()
 # Bar graph comparing number of optimal decisions
 # Varying only risk- vs. varying risk- and decision-related attributes
 
+# List of all possible decisions
+decision_options = np.unique(Y_risk, return_counts = True)
+
 counts_risk = np.array([np.sum(noptions_risk == num) for num in decision_options[0]])
 counts_riskdec = np.array([np.sum(noptions_riskdec == num) for num in decision_options[0]])
 
 bar_width = 0.4
 
 fig, ax = plt.subplots()
-ax.bar(decision_options[0]-bar_width/2, counts_risk, width=bar_width, label='Varying risk only')
-ax.bar(decision_options[0]+bar_width/2, counts_riskdec, width=bar_width, label='Varying risk and decision inputs')
+ax.bar(decision_options[0]-bar_width/2, counts_risk, width=bar_width,
+       color = dis_non_cols[0],
+       label='Varying risk only')
+ax.bar(decision_options[0]+bar_width/2, counts_riskdec, width=bar_width,
+       color = dis_non_cols[1],
+       label='Varying risk and decision inputs')
 ax.set_xlabel('Number of optimal decisions')
 ax.set_ylabel('Number of cells')
 ax.set_xticks(decision_options[0])
