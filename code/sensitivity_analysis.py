@@ -2,7 +2,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from netCDF4 import Dataset
 import cartopy.crs as ccrs
+from safepython import PAWN
 import safepython.PAWN_pmf as PAWN_pmf
 from safepython.util import aggregate_boot  # function to aggregate the bootstrap results
 
@@ -20,6 +22,41 @@ X_risk = np.array(np.meshgrid(ssp_opts, warming_opts, calibration_opts, vuln1_op
 
 # Need to make a numeric version of X for PAWN
 X_risk_numeric = np.array(np.meshgrid([1,2,5], [2,4], [1,2,3], vuln1_opts, vuln2_opts)).T.reshape(-1,5)
+
+###################################################################
+# SENSITIVITY OF RISK
+###################################################################
+
+# Calculate mean and upper and lower credible intervals from GAM samples
+nloc = 110*83
+Y_mean = np.empty((X_risk.shape[0],nloc))
+# Y_lower = np.empty(X_risk.shape[0])
+# Y_upper = np.empty(X_risk.shape[0])
+
+for i in range(X_risk.shape[0]):
+    data = Dataset('./data/'+X_risk[i,2]+
+                   '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
+                   '_WL'+X_risk[i,1]+
+                   '_SSP'+X_risk[i,0]+
+                   '_vp1='+X_risk[i,3]+
+                   '_vp2='+X_risk[i,4]+'.nc')
+    allEAI = np.array(data.variables['sim_annual_impact'])
+    allEAI[np.where(allEAI > 9e30)] = 0
+    allEAI = 10**allEAI - 1 # 110 x 83 x 1000
+    # get average EAI in each location
+    meanEAI = np.mean(allEAI, axis=2)
+    meanEAI = meanEAI.reshape(110*83)
+    Y_mean[i,:] = meanEAI
+    # aggEAI = np.nansum(allEAI,axis=(0,1)) # 1000
+    # Y_mean[i] = np.mean(aggEAI)
+    # Y_lower[i] = np.quantile(aggEAI,0.025)
+    # Y_upper[i] = np.quantile(aggEAI,0.975)
+
+###################################################################
+# SENSITIVITY OF OUTPUT DECISION
+###################################################################
+
+# Expand X to include decision-related parameters
 
 # Load in Latin hypercube samples
 lhc_200 = np.loadtxt('./data/lat_hyp_samples_200.csv', delimiter=',')
@@ -65,8 +102,8 @@ for i in range(X.shape[0]):
     Y[i,:] = data['optimal_decision']
 
 ################################################################
-# Apply PAWN PMF method to each grid cell
-# Number of inputs:
+# # Apply PAWN PMF method to each grid cell
+# # Number of inputs:
 # M = X.shape[1]
 # # PAWN set-up
 # Nboot = 100
