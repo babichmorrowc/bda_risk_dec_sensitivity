@@ -31,7 +31,7 @@ X_labels = ['SSP',
             'Relative importance of financial']
 
 # Color scales
-# Continous
+# Continuous
 
 # Discrete, sequential
 # dis_seq_cols = ['#FEE6CE','#FDAE6B','#E6550D']
@@ -214,7 +214,7 @@ plt.show()
 # plt.show()
 
 ###########################################################################
-# FIGURE 4B
+# FIGURE 3B
 # Varying risk AND decision inputs
 # Plot number of optimal decisions per cell
 n_samples = 200
@@ -313,7 +313,7 @@ plt.show()
 # plt.show()
 
 ###########################################################################
-# FIGURE 4C
+# FIGURE 3C
 # Bar graph comparing number of optimal decisions
 # Varying only risk- vs. varying risk- and decision-related attributes
 
@@ -339,11 +339,13 @@ ax.legend()
 plt.show()
 
 ###########################################################################
-# FIGURE 3
+# FIGURE 4
 # Boxplots of sensitivity metric (KS statistic for risk, PMF MVD for decision)
 # For three chosen locations
 lon_ind = 241 # London
+ld_ind = 1000 # Lake District
 scot_ind = 1445 # location in Scotland very sensitive to SSP
+
 
 # Read in sensitivity results:
 max_dist_vals = np.load('./data/pawn_results/max_dist_vals_lhc200.npy')
@@ -351,18 +353,31 @@ max_dist_lbs = np.load('./data/pawn_results/max_dist_lbs_lhc200.npy')
 max_dist_ubs = np.load('./data/pawn_results/max_dist_ubs_lhc200.npy')
 
 # Decision-related boxplots only:
+plt.figure(figsize=(19,16))
 # For London
+plt.subplot(3,1,1)
 pf.boxplot1(max_dist_vals[:,lon_ind],
             S_lb=max_dist_lbs[:,lon_ind],
             S_ub=max_dist_ubs[:,lon_ind],
-            X_Labels=X_labels)
+            # X_Labels=X_labels
+            )
 plt.title('London')
-plt.xticks(rotation=30,ha='right')
+plt.xticks([])
 plt.ylim((None, 0.5))
-plt.tight_layout()
-plt.show()
+
+# For Leeds
+plt.subplot(3,1,2)
+pf.boxplot1(max_dist_vals[:,ld_ind],
+            S_lb=max_dist_lbs[:,ld_ind],
+            S_ub=max_dist_ubs[:,ld_ind],
+            # X_Labels=X_labels
+            )
+plt.title('Lake District')
+plt.xticks([])
+plt.ylim((None, 0.5))
 
 # For Scotland
+plt.subplot(3,1,3)
 pf.boxplot1(max_dist_vals[:,scot_ind],
             S_lb=max_dist_lbs[:,scot_ind],
             S_ub=max_dist_ubs[:,scot_ind],
@@ -370,13 +385,15 @@ pf.boxplot1(max_dist_vals[:,scot_ind],
 plt.title('Scotland')
 plt.xticks(rotation=30,ha='right')
 plt.ylim((None, 0.5))
-plt.tight_layout()
+
 plt.show()
 
 ###########################################################################
 # FIGURE 7
 # Map of decision sensitivity values for all inputs
 
+# can be any data file
+data = pd.read_csv("./data/decision_files_jit/OptimalDecision_ssp1_2deg_ChangeFactor_v1_53.78_v2_-3.804_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
 lon = data['lon']
 lat = data['lat']
 
@@ -396,79 +413,90 @@ ax11 = plt.subplot(3,4,11,projection=ccrs.PlateCarree())
 
 ax1.set_xlabel('Longitude')
 ax1.set_ylabel('Latitude')
-cp = ax1.scatter(lon,lat,c=max_dist_vals[0,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax1.scatter(lon,lat,c=max_dist_vals[0,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax1,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[0])
+ax1.coastlines(linewidth=0.5)
 ax1.title.set_text('(a)')
 
 ax2.set_xlabel('Longitude')
 ax2.set_ylabel('Latitude')
-cp = ax2.scatter(lon,lat,c=max_dist_vals[1,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax2.scatter(lon,lat,c=max_dist_vals[1,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax2,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[1])
+ax2.coastlines(linewidth=0.5)
 ax2.title.set_text('(b)')
 
 ax3.set_xlabel('Longitude')
 ax3.set_ylabel('Latitude')
-cp = ax3.scatter(lon,lat,c=max_dist_vals[2,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax3.scatter(lon,lat,c=max_dist_vals[2,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax3,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[2])
+ax3.coastlines(linewidth=0.5)
 ax3.title.set_text('(c)')
 
 ax4.set_xlabel('Longitude')
 ax4.set_ylabel('Latitude')
-cp = ax4.scatter(lon,lat,c=max_dist_vals[3,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax4.scatter(lon,lat,c=max_dist_vals[3,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax4,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[3])
+ax4.coastlines(linewidth=0.5)
 ax4.title.set_text('(d)')
 
 ax5.set_xlabel('Longitude')
 ax5.set_ylabel('Latitude')
-cp = ax5.scatter(lon,lat,c=max_dist_vals[4,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax5.scatter(lon,lat,c=max_dist_vals[4,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax5,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[4])
+ax5.coastlines(linewidth=0.5)
 ax5.title.set_text('(e)')
 
 ax6.set_xlabel('Longitude')
 ax6.set_ylabel('Latitude')
-cp = ax6.scatter(lon,lat,c=max_dist_vals[5,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax6.scatter(lon,lat,c=max_dist_vals[5,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax6,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[5])
+ax6.coastlines(linewidth=0.5)
 ax6.title.set_text('(f)')
 
 ax7.set_xlabel('Longitude')
 ax7.set_ylabel('Latitude')
-cp = ax7.scatter(lon,lat,c=max_dist_vals[6,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax7.scatter(lon,lat,c=max_dist_vals[6,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax7,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[6])
+ax7.coastlines(linewidth=0.5)
 ax7.title.set_text('(g)')
 
 ax8.set_xlabel('Longitude')
 ax8.set_ylabel('Latitude')
-cp = ax8.scatter(lon,lat,c=max_dist_vals[7,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax8.scatter(lon,lat,c=max_dist_vals[7,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax8,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[7])
+ax8.coastlines(linewidth=0.5)
 ax8.title.set_text('(h)')
 
 ax9.set_xlabel('Longitude')
 ax9.set_ylabel('Latitude')
-cp = ax9.scatter(lon,lat,c=max_dist_vals[8,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax9.scatter(lon,lat,c=max_dist_vals[8,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax9,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[8])
+ax9.coastlines(linewidth=0.5)
 ax9.title.set_text('(i)')
 
 ax10.set_xlabel('Longitude')
 ax10.set_ylabel('Latitude')
-cp = ax10.scatter(lon,lat,c=max_dist_vals[9,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax10.scatter(lon,lat,c=max_dist_vals[9,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax10,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[9])
+ax10.coastlines(linewidth=0.5)
 ax10.title.set_text('(j)')
 
 ax11.set_xlabel('Longitude')
 ax11.set_ylabel('Latitude')
-cp = ax11.scatter(lon,lat,c=max_dist_vals[10,:],vmin=0,vmax=0.5,s=5,cmap='viridis')
+cp = ax11.scatter(lon,lat,c=max_dist_vals[10,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
 cbar = plt.colorbar(cp,ax=ax11,shrink=0.7)
 cbar.set_label('Mean maximum distance for\n' + X_labels[10])
+ax11.coastlines(linewidth=0.5)
 ax11.title.set_text('(k)')
 
 plt.show()
