@@ -29,11 +29,11 @@ X_risk_numeric = np.array(np.meshgrid([1,2,5], [2,4], [1,2,3], vuln1_opts, vuln2
 
 # Calculate mean and upper and lower credible intervals from GAM samples
 nloc = 110*83
-Y_mean = np.empty((X_risk.shape[0],nloc))
-# Y_lower = np.empty(X_risk.shape[0])
-# Y_upper = np.empty(X_risk.shape[0])
+nloc_land = 1711
+Y_mean = np.empty((X_risk.shape[0],nloc_land))
 
 for i in range(X_risk.shape[0]):
+    # do i want to replace this with using the get_EAI function?
     data = Dataset('./data/'+X_risk[i,2]+
                    '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
                    '_WL'+X_risk[i,1]+
@@ -41,16 +41,43 @@ for i in range(X_risk.shape[0]):
                    '_vp1='+X_risk[i,3]+
                    '_vp2='+X_risk[i,4]+'.nc')
     allEAI = np.array(data.variables['sim_annual_impact'])
-    allEAI[np.where(allEAI > 9e30)] = 0
-    allEAI = 10**allEAI - 1 # 110 x 83 x 1000
+    # allEAI[np.where(allEAI > 9e30)] = 0
+    # allEAI = 10**allEAI - 1 # 110 x 83 x 1000
+    # just want the land locations
+    allEAI_land = allEAI[allEAI < 9e30].reshape((nloc_land, 1000)) # 1711 x 1000
     # get average EAI in each location
-    meanEAI = np.mean(allEAI, axis=2)
-    meanEAI = meanEAI.reshape(110*83)
-    Y_mean[i,:] = meanEAI
-    # aggEAI = np.nansum(allEAI,axis=(0,1)) # 1000
-    # Y_mean[i] = np.mean(aggEAI)
-    # Y_lower[i] = np.quantile(aggEAI,0.025)
-    # Y_upper[i] = np.quantile(aggEAI,0.975)
+    meanEAI_land = np.mean(allEAI_land, axis=1)
+    # meanEAI = np.mean(allEAI, axis=2) # averaged across 1000 gam samples
+    # meanEAI = meanEAI.reshape(110*83)
+    Y_mean[i,:] = meanEAI_land
+
+################################################################
+# Apply PAWN method to each grid cell
+# # Number of inputs:
+# M = X_risk_numeric.shape[1]
+# # PAWN set-up
+# Nboot = 100
+# n = 10
+
+# KS_vals = np.empty((M, nloc_land))
+# KS_lbs = np.empty((M, nloc_land))
+# KS_ubs = np.empty((M, nloc_land))
+
+# for loc in range(nloc_land):
+#     print(loc)
+#     Y_loc = Y_mean[:,loc]
+#     # Otherwise, run PAWN
+#     KS_median, KS_mean, KS_max = \
+#         PAWN.pawn_indices(X_risk_numeric, Y_loc, n = n, Nboot = Nboot)
+#     mean_KS_mean, mean_KS_lb, mean_KS_ub = aggregate_boot(KS_mean)
+#     KS_vals[:,loc] = mean_KS_mean
+#     KS_lbs[:,loc] = mean_KS_lb
+#     KS_ubs[:,loc] = mean_KS_ub
+
+# # Save results
+# np.save('./data/pawn_results/KS_vals_lhc200.npy', KS_vals)
+# np.save('./data/pawn_results/KS_lbs_lhc200.npy', KS_lbs)
+# np.save('./data/pawn_results/KS_ubs_lhc200.npy', KS_ubs)
 
 ###################################################################
 # SENSITIVITY OF OUTPUT DECISION
@@ -118,7 +145,7 @@ for i in range(X.shape[0]):
 #     Y_loc = Y[:,loc]
 #     # Check number of decisions in location loc
 #     if len(np.unique(Y_loc)) == 1:
-#         print('Only one location in location ' + str(loc))
+#         print('Only one decision in location ' + str(loc))
 #         # Fill in a row of NaNs
 #         max_dist_vals[:,loc] = np.repeat(np.nan, M)
 #         max_dist_lbs[:,loc] = np.repeat(np.nan, M)
