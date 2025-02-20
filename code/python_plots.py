@@ -29,6 +29,20 @@ X_labels = ['SSP',
             'Annual cost per person of d3',
             'Effectiveness of d3',
             'Relative importance of financial']
+X_labels_risk = X_labels[0:5]
+# Short versions
+X_labels_short = ['SSP',
+                  'WARM',
+                  'CAL',
+                  'VULN1',
+                  'VULN2',
+                  'COST1',
+                  'COST2',
+                  'COST3',
+                  'EFF1',
+                  'EFF2',
+                  'WEIGHT']
+X_labels_risk_short = X_labels_short[0:5]
 
 # Color scales
 # Continuous
@@ -346,44 +360,81 @@ lon_ind = 241 # London
 ld_ind = 1000 # Lake District
 scot_ind = 1445 # location in Scotland very sensitive to SSP
 
-
 # Read in sensitivity results:
+# For risk
+KS_vals = np.load('./data/pawn_results/KS_vals_lhc200.npy')
+KS_lbs = np.load('./data/pawn_results/KS_lbs_lhc200.npy')
+KS_ubs = np.load('./data/pawn_results/KS_ubs_lhc200.npy')
+# For decision
 max_dist_vals = np.load('./data/pawn_results/max_dist_vals_lhc200.npy')
 max_dist_lbs = np.load('./data/pawn_results/max_dist_lbs_lhc200.npy')
 max_dist_ubs = np.load('./data/pawn_results/max_dist_ubs_lhc200.npy')
 
-# Decision-related boxplots only:
 plt.figure(figsize=(19,16))
+# Risk-related boxplots:
 # For London
-plt.subplot(3,1,1)
+ax1 = plt.subplot(3,2,1)
+pf.boxplot1(KS_vals[:,lon_ind],
+            S_lb=KS_lbs[:,lon_ind],
+            S_ub=KS_ubs[:,lon_ind],
+            Y_Label="Mean KS Statistic"
+            )
+plt.title('(a)')
+ax1.set_xticklabels(['']*len(ax1.get_xticks()))
+plt.ylim((None, 0.5))
+# For Lake District
+ax2 = plt.subplot(3,2,3)
+pf.boxplot1(KS_vals[:,ld_ind],
+            S_lb=KS_lbs[:,ld_ind],
+            S_ub=KS_ubs[:,ld_ind],
+            Y_Label="Mean KS Statistic"
+            )
+plt.title('(c)')
+ax2.set_xticklabels(['']*len(ax2.get_xticks()))
+plt.ylim((None, 0.5))
+# For Scotland
+plt.subplot(3,2,5)
+pf.boxplot1(KS_vals[:,scot_ind],
+            S_lb=KS_lbs[:,scot_ind],
+            S_ub=KS_ubs[:,scot_ind],
+            Y_Label="Mean KS Statistic",
+            X_Labels=X_labels_risk_short)
+plt.title('(e)')
+plt.xticks(fontsize=11)
+# plt.xticks(rotation=30,ha='right')
+plt.ylim((None, 0.5))
+
+# Decision-related boxplots:
+# For London
+ax4 = plt.subplot(3,2,2)
 pf.boxplot1(max_dist_vals[:,lon_ind],
             S_lb=max_dist_lbs[:,lon_ind],
             S_ub=max_dist_ubs[:,lon_ind],
-            # X_Labels=X_labels
+            Y_Label="Maximum MVD"
             )
-plt.title('London')
-plt.xticks([])
+plt.title('(b)')
+ax4.set_xticklabels(['']*len(ax4.get_xticks()))
 plt.ylim((None, 0.5))
-
-# For Leeds
-plt.subplot(3,1,2)
+# For Lake District
+ax5 = plt.subplot(3,2,4)
 pf.boxplot1(max_dist_vals[:,ld_ind],
             S_lb=max_dist_lbs[:,ld_ind],
             S_ub=max_dist_ubs[:,ld_ind],
-            # X_Labels=X_labels
+            Y_Label="Maximum MVD"
             )
-plt.title('Lake District')
-plt.xticks([])
+plt.title('(d)')
+ax5.set_xticklabels(['']*len(ax5.get_xticks()))
 plt.ylim((None, 0.5))
-
 # For Scotland
-plt.subplot(3,1,3)
+plt.subplot(3,2,6)
 pf.boxplot1(max_dist_vals[:,scot_ind],
             S_lb=max_dist_lbs[:,scot_ind],
             S_ub=max_dist_ubs[:,scot_ind],
-            X_Labels=X_labels)
-plt.title('Scotland')
-plt.xticks(rotation=30,ha='right')
+            Y_Label="Maximum MVD",
+            X_Labels=X_labels_short)
+plt.title('(f)')
+plt.xticks(fontsize=11)
+# plt.xticks(rotation=30,ha='right')
 plt.ylim((None, 0.5))
 
 plt.show()
