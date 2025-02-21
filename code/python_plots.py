@@ -440,7 +440,46 @@ plt.ylim((None, 0.5))
 plt.show()
 
 ###########################################################################
-# FIGURE 7
+# FIGURE 5
+# Stacked barplot of sensitivity in each cell by latitude
+
+# can be any data file
+data = pd.read_csv("./data/decision_files_jit/OptimalDecision_ssp1_2deg_ChangeFactor_v1_53.78_v2_-3.804_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv")
+
+# Create a dataframe with the latitude data and the sensitivity values
+max_dist_vals_t = pd.DataFrame(np.transpose(max_dist_vals)) # 1711 x 11
+max_dist_vals_t.columns = X_labels_short
+# Join on and sort by latitude
+lat_cell_data = data.join(max_dist_vals_t).sort_values(by = 'lat')
+lat_cell_data = lat_cell_data[['lat'] + X_labels_short].set_index('lat')
+
+# Create a stacked barplot
+ax = lat_cell_data.plot(kind='bar', stacked=True, figsize=(15, 10))
+plt.xlabel('')
+plt.ylabel('Maximum MVD')
+plt.legend(title='Input parameters', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+# Create a secondary x-axis
+secax = ax.secondary_xaxis('bottom')
+secax.set_xlabel('Latitude')
+# Set x-ticks to label every 1 degree of latitude
+min_lat = lat_cell_data.index.min()
+max_lat = lat_cell_data.index.max()
+lat_ticks = np.arange(min_lat, max_lat + 1, 1)
+# Map latitude values to the positions of the bars
+bar_positions = np.linspace(0, len(lat_cell_data) - 1, len(lat_cell_data))
+lat_positions = np.interp(lat_ticks, lat_cell_data.index, bar_positions)
+secax.set_xticks(lat_positions)
+secax.set_xticklabels([f'{tick:.1f}' for tick in lat_ticks])
+# Hide the original x-tick labels
+ax.set_xticks([])
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
+###########################################################################
+# FIGURE 6
 # Map of decision sensitivity values for all inputs
 
 # can be any data file
