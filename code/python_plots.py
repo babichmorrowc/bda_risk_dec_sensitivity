@@ -478,6 +478,40 @@ ax.set_xticks([])
 plt.tight_layout()
 plt.show()
 
+# Consolidating inputs into categories
+lat_cell_data['Risk'] = lat_cell_data[X_labels_risk_short].sum(axis=1)
+lat_cell_data['Cost per day'] = lat_cell_data['COST1']
+lat_cell_data['Decision costs'] = lat_cell_data[['COST2', 'COST3']].sum(axis=1)
+lat_cell_data['Decision efficacies'] = lat_cell_data[['EFF1', 'EFF2']].sum(axis=1)
+lat_cell_data['Weight'] = lat_cell_data['WEIGHT']
+
+lat_cell_data_cons = lat_cell_data[['Risk', 'Cost per day', 'Decision costs', 'Decision efficacies', 'Weight']]
+
+# Create a stacked barplot
+ax = lat_cell_data_cons.plot(kind='bar', stacked=True, figsize=(15, 10))
+plt.xlabel('')
+plt.ylabel('Total Maximum MVD')
+plt.legend(title='Input parameter type', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+# Create a secondary x-axis
+secax = ax.secondary_xaxis('bottom')
+secax.set_xlabel('Latitude')
+# Set x-ticks to label every 1 degree of latitude
+min_lat = lat_cell_data.index.min()
+max_lat = lat_cell_data.index.max()
+lat_ticks = np.arange(min_lat, max_lat + 1, 1)
+# Map latitude values to the positions of the bars
+bar_positions = np.linspace(0, len(lat_cell_data) - 1, len(lat_cell_data))
+lat_positions = np.interp(lat_ticks, lat_cell_data.index, bar_positions)
+secax.set_xticks(lat_positions)
+secax.set_xticklabels([f'{tick:.1f}' for tick in lat_ticks])
+# Hide the original x-tick labels
+ax.set_xticks([])
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
 ###########################################################################
 # FIGURE 6
 # Map of decision sensitivity values for all inputs
