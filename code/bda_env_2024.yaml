@@ -1,4 +1,5 @@
-name: climada_env_2022
+name: bda_env_2024
+# edited from climada_env_2022.yaml
 channels:
  # - conda-main
  # - conda-mo-internal
@@ -313,8 +314,9 @@ dependencies:
     - pybufrkit==0.2.19
     - pytz-deprecation-shim==0.1.0.post0
     - rpy2==3.4.5
-    - safepython==0.1.1
+    # - safepython==0.1.1
+    - git+https://github.com/babichmorrowc/SAFE-python.git # use my forked version
     - salib==1.3.12
     - tzdata==2021.5
     - tzlocal==4.1
-prefix: /home/h01/ldawkins/.conda/envs/climada_env_2022
+prefix: /home/aw23877/anaconda3/envs/bda_env_2024.yaml
