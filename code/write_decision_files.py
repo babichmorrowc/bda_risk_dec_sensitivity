@@ -87,3 +87,34 @@ for ssp in ssp_opts:
                             cweights = cweights,
                             risk_input_string = risk_input_string)
 
+##########################################################################
+# Investigate results
+
+# For all runs in the decision_files folder
+# Get the list of all files in the folder
+folder_path = '../data/decision_files_' + str(n_samples) + '/'
+file_list = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, name))]
+n_files = len(file_list)
+
+nloc_land = 1711
+Y_riskdec = np.empty(n_files*nloc_land).reshape(n_files,nloc_land)
+
+# Loop over files in the folder
+for i, file_name in enumerate(file_list):
+    file_path = os.path.join(folder_path, file_name)
+    data = pd.read_csv(file_path)
+    Y_riskdec[i, :] = data['optimal_decision']
+
+noptions_riskdec = np.empty(nloc_land)
+for i in range(1711):
+    noptions_riskdec[i] = len(np.unique(Y_riskdec[:,i]))
+np.unique(noptions_riskdec, return_counts = True)
+# Get the indices of the 9 cells with one optimal decision
+onedec_cells = np.where(noptions_riskdec == 1)
+# what decision is it?
+np.unique(Y_riskdec[:,onedec_cells]) # all decision 1
+
+# Look into exposure in those cells
+for ssp in ssp_opts:
+    for ssp_year in [2041, 2084]:
+        exp = get_Exp(input_data_path="../data/", ssp=ssp, ssp_year=ssp_year)
