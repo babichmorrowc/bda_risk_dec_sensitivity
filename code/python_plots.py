@@ -5,8 +5,12 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.colors import ListedColormap, BoundaryNorm, LogNorm
 import cartopy.crs as ccrs
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import safepython.plot_functions as pf 
 from netCDF4 import Dataset
+
+os.chdir("./code")
+from bda_functions import *
 
 ###########################################################################
 # Set-up
@@ -44,9 +48,14 @@ X_labels_short = ['SSP',
                   'WEIGHT']
 X_labels_risk_short = X_labels_short[0:5]
 
+# Chosen locations
+lon_ind = 241 # London
+ld_ind = 1000 # Lake District
+scot_ind = 1445 # location in Scotland very sensitive to SSP
+chosen_ind = [lon_ind, ld_ind, scot_ind]
+
 # Color scales
 # Continuous
-
 # Discrete, sequential
 # dis_seq_cols = ['#FEE6CE','#FDAE6B','#E6550D']
 # dis_seq_cols = ['#ffeda0','#FDAE6B','#E6550D']
@@ -62,6 +71,26 @@ legend_labs = ['1 optimal decision', '2 optimal decisions', '3 optimal decisions
 
 ###########################################################################
 # FIGURE 2A
+# Mean of risk in each grid cell
+# Roughly following Laura's code here:
+# https://github.com/babichmorrowc/compass_miniproject/blob/main/code/orig_laura_code/plots_for_paper_python.py#L208
+
+# First just averaging for the default risk values
+default_risk = get_EAI('../data/',
+                       'UKCP_BC',
+                       '2deg',
+                       '2',
+                       '54.5',
+                       '-4.1')
+default_risk[np.where(default_risk > 9e30)] = np.nan
+default_EAI = 10**default_risk - 1
+# default_EAI[~np.isnan(default_EAI)]
+EAI_mean = np.nanmean(default_EAI,axis=2).reshape(110*83)
+
+log_norm_mean = LogNorm(vmin=1.0e-2, vmax=7.5e5)
+
+###########################################################################
+# FIGURE 2B
 # Standard deviation of risk in each grid cell
 # Roughly following Laura's code here:
 # https://github.com/babichmorrowc/compass_miniproject/blob/main/code/orig_laura_code/plots_for_paper_python.py#L471
@@ -73,7 +102,7 @@ tx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
 
 # Pretty slow -- can I jit this somehow?
 for i in range(X_risk.shape[0]):
-    data = Dataset('./data/'+X_risk[i,2]+
+    data = Dataset('../data/'+X_risk[i,2]+
                     '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
                     '_WL'+X_risk[i,1]+
                     '_SSP'+X_risk[i,0]+
@@ -81,14 +110,15 @@ for i in range(X_risk.shape[0]):
     allEAI = np.array(data.variables['sim_annual_impact'])
     # land locations have EAI < 9e30
     allEAI[np.where(allEAI > 9e30)] = 0
-    allEAI = 10**allEAI - 1
-    # get sum of squared eai values across all gam samples
-    txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI)
+    allEAI = 10**allEAI - 1 # 110 x 83 x 1000
+    # get sum of squared eai values across all gam samples for each combo of risk parameters
+    txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI) # 110 x 83 x 162
     # get sum of eai values across all gam samples
-    tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI)
+    tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI) # 110 x 83 x 162
 
-txx_all1 = np.apply_along_axis(lambda x : sum(x), 2, txx)
-tx_all1 = np.apply_along_axis(lambda x : sum(x), 2, tx)
+# Sum txx and tx across all risk parameter combinations
+txx_all1 = np.apply_along_axis(lambda x : sum(x), 2, txx) # 110 x 83
+tx_all1 = np.apply_along_axis(lambda x : sum(x), 2, tx) # 110 x 83
 
 SDall = np.empty(110*83).reshape(110,83)
 for i in range(110):
@@ -97,20 +127,25 @@ for i in range(110):
 nloc = 110*83
 SDall = SDall.reshape(nloc)
 
+# Now averaging over all values from all risk parameter combinations
+meanall = tx_all1 / (X_risk.shape[0]*1000)
+meanall[meanall == 0] = np.nan
+log_norm_mean2 = LogNorm(vmin = 4e-2, vmax = 9e5)
+
 lon = np.array(data.variables['exposure_longitude'])
 lon = lon.reshape(nloc)
 lat = np.array(data.variables['exposure_latitude'])
 lat = lat.reshape(nloc)
-log_norm = LogNorm(vmin=1.0e1, vmax=2.0e6)
+log_norm_sd = LogNorm(vmin=1.0e1, vmax=2.0e6)
 
 ###########################################################################
-# FIGURE 2B
+# FIGURE 2C
 # Varying risk inputs ONLY
 # Plot number of optimal decisions per cell
 
 # For all runs in the decision_files folder
 # Get the list of all files in the folder
-folder_path = './data/decision_files_jit/'
+folder_path = '../data/decision_files_jit/'
 file_list = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, name))]
 n_files = len(file_list)
 
@@ -129,117 +164,18 @@ for i in range(1711):
 # np.unique(noptions_risk, return_counts = True)
 noptions_risk = noptions_risk.astype(int)
 
-################################################################################################
-# FIGURE 2
-
-# Plot standard deviation of risk
-fig, axs = plt.subplots(1, 2, figsize=(18,15), layout="constrained", subplot_kw={'projection': ccrs.PlateCarree()})
-# plt.figure(figsize=(18,15))
-# ax1 = plt.subplot(1,2,1,projection=ccrs.PlateCarree())
-axs[0].set_xlabel('Longitude')
-axs[0].set_ylabel('Latitude')
-cp = axs[0].scatter(lon,lat,c=SDall,
-                 norm=log_norm,
-                 s=11,
-                 cmap='Purples')
-cbar = plt.colorbar(cp,ax=axs[0],shrink=0.5)
-cbar.set_label('Standard deviation of Risk')
-axs[0].set_title('(a)')
-axs[0].coastlines()
-
-# Plot number of decisions optimal in each cell
-lon_land = data['lon']
-lat_land = data['lat']
-axs[1].set_xlabel('Longitude')
-axs[1].set_ylabel('Latitude')
-scatter = axs[1].scatter(lon_land,lat_land,c=noptions_risk,s=12,cmap=dis_seq, norm=dis_seq_norm)
-legend_elements = [
-    Line2D([0], [0], marker='o', color='w', label=legend_labs[i], 
-           markersize=10, markerfacecolor=dis_seq_cols[i])
-    for i in range(len(legend_labs))
-]
-axs[1].legend(handles=legend_elements)
-axs[1].set_title('(b)')
-axs[1].coastlines()
-
-# Make sure plot (a) has the same limits
-axs[0].set_xlim(axs[1].get_xlim())
-axs[0].set_ylim(axs[1].get_ylim())
-plt.show()
-
-# # Plot percentage of time that each decision was optimal in a cell
-
-# List of all possible decisions
-# decision_options = np.unique(Y_risk, return_counts = True)
-
-# # Calculate frequencies of each decision per location
-# column_frequencies = {value: [] for value in decision_options[0]}
-# num_rows = Y.shape[0]
-
-# for col_index in range(Y.shape[1]):
-#     unique_values, value_counts = np.unique(Y[:, col_index], return_counts=True)
-#     # Create a dictionary to hold frequency counts for current column
-#     freq_dict = dict(zip(unique_values, value_counts))
-#     # Calculate frequencies for each decision option
-#     for value in decision_options[0]:
-#         if value in freq_dict:
-#             frequency = freq_dict[value] / num_rows
-#         else:
-#             frequency = 0.0  # Value not present, set frequency to 0
-        
-#         column_frequencies[value].append(frequency)
-
-# frequencies_df = pd.DataFrame(column_frequencies)
-
-# fig = plt.figure(figsize=(18,9))
-# ax1 = plt.subplot(1,3,1,projection=ccrs.PlateCarree())
-# ax2 = plt.subplot(1,3,2,projection=ccrs.PlateCarree())
-# ax3 = plt.subplot(1,3,3,projection=ccrs.PlateCarree())
-# lon_land = data['lon']
-# lat_land = data['lat']
-
-# # Percent of time that decision 1 is optimal
-# ax1.set_xlabel('Longitude')
-# ax1.set_ylabel('Latitude')
-# scatter = ax1.scatter(lon_land,lat_land,c=frequencies_df[1],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax1,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax1.coastlines()
-# ax1.title.set_text('Decision 1: % samples optimal')
-
-# # Percent of time that decision 2 is optimal
-# ax2.set_xlabel('Longitude')
-# ax2.set_ylabel('Latitude')
-# scatter = ax2.scatter(lon_land,lat_land,c=frequencies_df[2],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax2,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax2.coastlines()
-# ax2.title.set_text('Decision 2: % samples optimal')
-
-# # Percent of time that decision 3 is optimal
-# ax3.set_xlabel('Longitude')
-# ax3.set_ylabel('Latitude')
-# scatter = ax3.scatter(lon_land,lat_land,c=frequencies_df[3],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax3,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax3.coastlines()
-# ax3.title.set_text('Decision 3: % samples optimal')
-
-# plt.show()
-
 ###########################################################################
-# FIGURE 3B
+# FIGURE 2D
 # Varying risk AND decision inputs
 # Plot number of optimal decisions per cell
 n_samples = 200
 
 # For all runs in the decision_files folder
 # Get the list of all files in the folder
-folder_path = './data/decision_files_' + str(n_samples) + '/'
+folder_path = '../data/decision_files_' + str(n_samples) + '/'
 file_list = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, name))]
 n_files = len(file_list)
 
-nloc_land = 1711
 Y_riskdec = np.empty(n_files*nloc_land).reshape(n_files,nloc_land)
 
 # Loop over files in the folder
@@ -249,86 +185,13 @@ for i, file_name in enumerate(file_list):
     Y_riskdec[i, :] = data['optimal_decision']
 
 noptions_riskdec = np.empty(nloc_land)
-for i in range(1711):
+for i in range(nloc_land):
     noptions_riskdec[i] = len(np.unique(Y_riskdec[:,i]))
-np.unique(noptions_riskdec, return_counts = True)
-
-# Plot number of decisions optimal in each cell
-fig = plt.figure(figsize=(18,15))
-lon_land = data['lon']
-lat_land = data['lat']
-ax1 = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
-ax1.set_xlabel('Longitude')
-ax1.set_ylabel('Latitude')
-scatter = ax1.scatter(lon_land,lat_land,c=noptions_riskdec,s=12,cmap=dis_seq, norm=dis_seq_norm)
-ax1.legend(handles=legend_elements)
-ax1.coastlines()
-plt.show()
-
-# # Plot percentage of time that each decision was optimal in a cell
-
-
-# # List of all possible decisions
-# decision_options = np.unique(Y_riskdec, return_counts = True)
-
-# # Calculate frequencies of each decision per location
-# column_frequencies = {value: [] for value in decision_options[0]}
-# num_rows = Y.shape[0]
-
-# for col_index in range(Y.shape[1]):
-#     unique_values, value_counts = np.unique(Y[:, col_index], return_counts=True)
-#     # Create a dictionary to hold frequency counts for current column
-#     freq_dict = dict(zip(unique_values, value_counts))
-#     # Calculate frequencies for each decision option
-#     for value in decision_options[0]:
-#         if value in freq_dict:
-#             frequency = freq_dict[value] / num_rows
-#         else:
-#             frequency = 0.0  # Value not present, set frequency to 0
-        
-#         column_frequencies[value].append(frequency)
-
-# frequencies_df = pd.DataFrame(column_frequencies)
-
-# fig = plt.figure(figsize=(18,9))
-# ax1 = plt.subplot(1,3,1,projection=ccrs.PlateCarree())
-# ax2 = plt.subplot(1,3,2,projection=ccrs.PlateCarree())
-# ax3 = plt.subplot(1,3,3,projection=ccrs.PlateCarree())
-# lon_land = data['lon']
-# lat_land = data['lat']
-
-# # Percent of time that decision 1 is optimal
-# ax1.set_xlabel('Longitude')
-# ax1.set_ylabel('Latitude')
-# scatter = ax1.scatter(lon_land,lat_land,c=frequencies_df[1],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax1,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax1.coastlines()
-# ax1.title.set_text('Decision 1: % samples optimal')
-
-# # Percent of time that decision 2 is optimal
-# ax2.set_xlabel('Longitude')
-# ax2.set_ylabel('Latitude')
-# scatter = ax2.scatter(lon_land,lat_land,c=frequencies_df[2],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax2,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax2.coastlines()
-# ax2.title.set_text('Decision 2: % samples optimal')
-
-# # Percent of time that decision 3 is optimal
-# ax3.set_xlabel('Longitude')
-# ax3.set_ylabel('Latitude')
-# scatter = ax3.scatter(lon_land,lat_land,c=frequencies_df[3],s=5,vmin=0,vmax=1,cmap='Greens')
-# cbar = plt.colorbar(scatter,ax=ax3,shrink=0.3)
-# cbar.set_label('% samples optimal')
-# ax3.coastlines()
-# ax3.title.set_text('Decision 3: % samples optimal')
-
-# plt.show()
+# np.unique(noptions_riskdec, return_counts = True)
 
 ###########################################################################
-# FIGURE 3C
-# Bar graph comparing number of optimal decisions
+# FIGURE 2 PIECHARTS
+# Inset piecharts showing number of optimal decisions
 # Varying only risk- vs. varying risk- and decision-related attributes
 
 # List of all possible decisions
@@ -337,28 +200,127 @@ decision_options = np.unique(Y_risk, return_counts = True)
 counts_risk = np.array([np.sum(noptions_risk == num) for num in decision_options[0]])
 counts_riskdec = np.array([np.sum(noptions_riskdec == num) for num in decision_options[0]])
 
-bar_width = 0.4
+# bar_width = 0.4
 
-fig, ax = plt.subplots()
-ax.bar(decision_options[0]-bar_width/2, counts_risk, width=bar_width,
-       color = dis_non_cols[0],
-       label='Varying risk only')
-ax.bar(decision_options[0]+bar_width/2, counts_riskdec, width=bar_width,
-       color = dis_non_cols[1],
-       label='Varying risk and decision inputs')
-ax.set_xlabel('Number of optimal decisions')
-ax.set_ylabel('Number of cells')
-ax.set_xticks(decision_options[0])
-ax.legend()
+# fig, ax = plt.subplots()
+# ax.bar(decision_options[0]-bar_width/2, counts_risk, width=bar_width,
+#        color = dis_non_cols[0],
+#        label='Varying risk only')
+# ax.bar(decision_options[0]+bar_width/2, counts_riskdec, width=bar_width,
+#        color = dis_non_cols[1],
+#        label='Varying risk and decision inputs')
+# ax.set_xlabel('Number of optimal decisions')
+# ax.set_ylabel('Number of cells')
+# ax.set_xticks(decision_options[0])
+# ax.legend()
+# plt.show()
+
+################################################################################################
+# FIGURE 2
+
+lon_land = data['lon']
+lat_land = data['lat']
+
+# Make 4 panel figure
+fig, axs = plt.subplots(2, 2,
+                        figsize=(18,15),
+                        layout="constrained",
+                        subplot_kw={'projection': ccrs.PlateCarree()})
+# Plot of mean risk
+# cp = axs[0,0].scatter(lon, lat, c = EAI_mean,
+#                       norm=log_norm_mean,
+#                     s=11,
+#                     cmap = 'Oranges')
+cp = axs[0,0].scatter(lon,lat,c=meanall,
+                    norm=log_norm_mean2,
+                    s=11,
+                    cmap='Oranges')
+highlight0 = axs[0,0].scatter(lon_land[chosen_ind],
+                           lat_land[chosen_ind],
+                           facecolors = 'none',
+                           edgecolors = 'black',
+                           s=30)
+# Create an inset axis for the colorbar
+cax = inset_axes(axs[0,0], width="5%", height="30%", loc='upper right', borderpad = 5)
+cbar = plt.colorbar(cp,ax=axs[0,0], cax=cax)
+cbar.set_label('Mean EAI')
+axs[0,0].set_title('(a)')
+axs[0,0].coastlines()
+
+# Plot of standard deviation risk
+cp = axs[0,1].scatter(lon,lat,c=SDall,
+                 norm=log_norm_sd,
+                 s=11,
+                 cmap='Purples')
+highlight1 = axs[0,1].scatter(lon_land[chosen_ind],
+                           lat_land[chosen_ind],
+                           facecolors = 'none',
+                           edgecolors = 'black',
+                           s=30)
+# Create an inset axis for the colorbar
+cax = inset_axes(axs[0,1], width="5%", height="30%", loc='upper right', borderpad = 5)
+cbar = plt.colorbar(cp,ax=axs[0,1], cax=cax)
+cbar.set_label('Standard deviation of EAI')
+axs[0,1].set_title('(b)')
+axs[0,1].coastlines()
+
+# Plot number of decisions optimal in each cell
+# Varying only risk
+scatter = axs[1,0].scatter(lon_land,lat_land,
+                           c=noptions_risk,s=12,cmap=dis_seq, norm=dis_seq_norm)
+highlight2 = axs[1,0].scatter(lon_land[chosen_ind],
+                           lat_land[chosen_ind],
+                           facecolors = 'none',
+                           edgecolors = 'black',
+                           s=30)
+legend_elements = [
+    Line2D([0], [0], marker='o', color='w', label=legend_labs[i], 
+           markersize=10, markerfacecolor=dis_seq_cols[i])
+    for i in range(len(legend_labs))
+]
+axs[1,0].legend(handles=legend_elements)
+axs[1,0].set_title('(c)')
+axs[1,0].coastlines()
+# Add a subplot for panel b
+pie1 = inset_axes(axs[1,0], width="30%", height="30%", loc='upper right', borderpad = 1)
+pie1.pie(counts_risk, colors = dis_seq_cols)
+
+# Plot number of decisions optimal in each cell
+# Varying risk and decision parameters
+axs[1,1].set_xlabel('Longitude')
+axs[1,1].set_ylabel('Latitude')
+scatter = axs[1,1].scatter(lon_land,lat_land,c=noptions_riskdec,s=12,cmap=dis_seq, norm=dis_seq_norm)
+highlight3 = axs[1,1].scatter(lon_land[chosen_ind],
+                           lat_land[chosen_ind],
+                           facecolors = 'none',
+                           edgecolors = 'black',
+                           s=30)
+legend_elements = [
+    Line2D([0], [0], marker='o', color='w', label=legend_labs[i], 
+           markersize=10, markerfacecolor=dis_seq_cols[i])
+    for i in range(len(legend_labs))
+]
+axs[1,1].legend(handles=legend_elements)
+axs[1,1].set_title('(c)')
+axs[1,1].coastlines()
+
+# Add a subplot for panel c
+pie2 = inset_axes(axs[1,1], width="30%", height="30%", loc='upper right', borderpad = 1)
+pie2.pie(counts_riskdec, colors = dis_seq_cols)
+
+# Make sure plot (a) and (b) have the same limits as (c) and (d)
+axs[0,0].set_xlim(axs[1,0].get_xlim())
+axs[0,0].set_ylim(axs[1,0].get_ylim())
+axs[0,1].set_xlim(axs[1,0].get_xlim())
+axs[0,1].set_ylim(axs[1,0].get_ylim())
+
+# plt.subplots_adjust(wspace=0.1)
 plt.show()
 
 ###########################################################################
-# FIGURE 4
+# FIGURE 3
 # Boxplots of sensitivity metric (KS statistic for risk, PMF MVD for decision)
 # For three chosen locations
-lon_ind = 241 # London
-ld_ind = 1000 # Lake District
-scot_ind = 1445 # location in Scotland very sensitive to SSP
 
 # Read in sensitivity results:
 # For risk
@@ -521,106 +483,224 @@ data = pd.read_csv("./data/decision_files_jit/OptimalDecision_ssp1_2deg_ChangeFa
 lon = data['lon']
 lat = data['lat']
 
+fig, axes = plt.subplots(5, 5, figsize=(17, 12), subplot_kw={'projection': ccrs.PlateCarree()})
+
+# Define subplot positions to match your custom layout
+plot_indices = [
+    (0, 0), (0, 1), (0, 2), (0, 3), (0, 4),  # First row
+    (1, 0),                                 # Second row (one plot)
+    (1, 1), (2, 1),                          # Third row (two plots)
+    (3, 1), (3, 2),
+    (4, 1)                   
+]
+
+# Iterate through each axis and plot
+for i, (row, col) in enumerate(plot_indices):
+    ax = axes[row, col]
+    cp = ax.scatter(lon, lat, c=max_dist_vals[i, :], vmin=0, vmax=0.5, s=5, cmap='Blues')
+    ax.coastlines(linewidth=0.5)
+    ax.set_title(f'({chr(97 + i)})')  # (a), (b), (c), etc.
+    ax.set_ylabel(X_labels_short[i], labelpad=20)
+
+# Hide empty subplots
+for row in range(5):
+    for col in range(5):
+        if (row, col) not in plot_indices:
+            fig.delaxes(axes[row, col])
+plt.subplots_adjust(left=0.3)
+plt.show()
+
 # Make plot with 3 rows x 4 columns
 fig = plt.figure(figsize=(17,12))
-ax1 = plt.subplot(3,4,1,projection=ccrs.PlateCarree())
-ax2 = plt.subplot(3,4,2,projection=ccrs.PlateCarree())
-ax3 = plt.subplot(3,4,3,projection=ccrs.PlateCarree())
-ax4 = plt.subplot(3,4,4,projection=ccrs.PlateCarree())
-ax5 = plt.subplot(3,4,5,projection=ccrs.PlateCarree())
-ax6 = plt.subplot(3,4,6,projection=ccrs.PlateCarree())
-ax7 = plt.subplot(3,4,7,projection=ccrs.PlateCarree())
-ax8 = plt.subplot(3,4,8,projection=ccrs.PlateCarree())
-ax9 = plt.subplot(3,4,9,projection=ccrs.PlateCarree())
-ax10 = plt.subplot(3,4,10,projection=ccrs.PlateCarree())
-ax11 = plt.subplot(3,4,11,projection=ccrs.PlateCarree())
+ax1 = plt.subplot(5,5,1,projection=ccrs.PlateCarree())
+ax2 = plt.subplot(5,5,2,projection=ccrs.PlateCarree())
+ax3 = plt.subplot(5,5,3,projection=ccrs.PlateCarree())
+ax4 = plt.subplot(5,5,4,projection=ccrs.PlateCarree())
+ax5 = plt.subplot(5,5,5,projection=ccrs.PlateCarree())
+ax6 = plt.subplot(5,5,6,projection=ccrs.PlateCarree())
+ax7 = plt.subplot(5,5,11,projection=ccrs.PlateCarree())
+ax8 = plt.subplot(5,5,12,projection=ccrs.PlateCarree())
+ax9 = plt.subplot(5,5,16,projection=ccrs.PlateCarree())
+ax10 = plt.subplot(5,5,17,projection=ccrs.PlateCarree())
+ax11 = plt.subplot(5,5,21,projection=ccrs.PlateCarree())
 
-ax1.set_xlabel('Longitude')
-ax1.set_ylabel('Latitude')
 cp = ax1.scatter(lon,lat,c=max_dist_vals[0,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax1,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[0])
 ax1.coastlines(linewidth=0.5)
+ax1.set_ylabel(X_labels_short[0],labelpad=10)
 ax1.title.set_text('(a)')
 
-ax2.set_xlabel('Longitude')
-ax2.set_ylabel('Latitude')
 cp = ax2.scatter(lon,lat,c=max_dist_vals[1,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax2,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[1])
+cbar.set_label(X_labels_short[1]+': Mean MVD')
 ax2.coastlines(linewidth=0.5)
 ax2.title.set_text('(b)')
 
-ax3.set_xlabel('Longitude')
-ax3.set_ylabel('Latitude')
 cp = ax3.scatter(lon,lat,c=max_dist_vals[2,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax3,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[2])
+cbar.set_label(X_labels_short[2]+': Mean MVD')
 ax3.coastlines(linewidth=0.5)
 ax3.title.set_text('(c)')
 
-ax4.set_xlabel('Longitude')
-ax4.set_ylabel('Latitude')
 cp = ax4.scatter(lon,lat,c=max_dist_vals[3,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax4,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[3])
+cbar.set_label(X_labels_short[3]+': Mean MVD')
 ax4.coastlines(linewidth=0.5)
 ax4.title.set_text('(d)')
 
-ax5.set_xlabel('Longitude')
-ax5.set_ylabel('Latitude')
 cp = ax5.scatter(lon,lat,c=max_dist_vals[4,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax5,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[4])
+cbar.set_label(X_labels_short[4]+': Mean MVD')
 ax5.coastlines(linewidth=0.5)
 ax5.title.set_text('(e)')
 
-ax6.set_xlabel('Longitude')
-ax6.set_ylabel('Latitude')
 cp = ax6.scatter(lon,lat,c=max_dist_vals[5,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax6,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[5])
+cbar.set_label(X_labels_short[5]+': Mean MVD')
 ax6.coastlines(linewidth=0.5)
 ax6.title.set_text('(f)')
 
-ax7.set_xlabel('Longitude')
-ax7.set_ylabel('Latitude')
 cp = ax7.scatter(lon,lat,c=max_dist_vals[6,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax7,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[6])
+cbar.set_label(X_labels_short[6]+': Mean MVD')
 ax7.coastlines(linewidth=0.5)
 ax7.title.set_text('(g)')
 
-ax8.set_xlabel('Longitude')
-ax8.set_ylabel('Latitude')
 cp = ax8.scatter(lon,lat,c=max_dist_vals[7,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax8,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[7])
+cbar.set_label(X_labels_short[7]+': Mean MVD')
 ax8.coastlines(linewidth=0.5)
 ax8.title.set_text('(h)')
 
-ax9.set_xlabel('Longitude')
-ax9.set_ylabel('Latitude')
 cp = ax9.scatter(lon,lat,c=max_dist_vals[8,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax9,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[8])
+cbar.set_label(X_labels_short[8]+': Mean MVD')
 ax9.coastlines(linewidth=0.5)
 ax9.title.set_text('(i)')
 
-ax10.set_xlabel('Longitude')
-ax10.set_ylabel('Latitude')
 cp = ax10.scatter(lon,lat,c=max_dist_vals[9,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax10,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[9])
+cbar.set_label(X_labels_short[9]+': Mean MVD')
 ax10.coastlines(linewidth=0.5)
 ax10.title.set_text('(j)')
 
-ax11.set_xlabel('Longitude')
-ax11.set_ylabel('Latitude')
 cp = ax11.scatter(lon,lat,c=max_dist_vals[10,:],vmin=0,vmax=0.5,s=5,cmap='Blues')
-cbar = plt.colorbar(cp,ax=ax11,shrink=0.7)
-cbar.set_label('Mean maximum distance for\n' + X_labels[10])
+cbar.set_label(X_labels_short[10]+': Mean MVD')
 ax11.coastlines(linewidth=0.5)
 ax11.title.set_text('(k)')
 
+# plt.tight_layout()
 plt.show()
+
+#############################################################################
+# SUPPLEMENT
+# # Plot percentage of time that each decision was optimal in a cell
+
+# List of all possible decisions
+# decision_options = np.unique(Y_risk, return_counts = True)
+
+# # Calculate frequencies of each decision per location
+# column_frequencies = {value: [] for value in decision_options[0]}
+# num_rows = Y.shape[0]
+
+# for col_index in range(Y.shape[1]):
+#     unique_values, value_counts = np.unique(Y[:, col_index], return_counts=True)
+#     # Create a dictionary to hold frequency counts for current column
+#     freq_dict = dict(zip(unique_values, value_counts))
+#     # Calculate frequencies for each decision option
+#     for value in decision_options[0]:
+#         if value in freq_dict:
+#             frequency = freq_dict[value] / num_rows
+#         else:
+#             frequency = 0.0  # Value not present, set frequency to 0
+        
+#         column_frequencies[value].append(frequency)
+
+# frequencies_df = pd.DataFrame(column_frequencies)
+
+# fig = plt.figure(figsize=(18,9))
+# ax1 = plt.subplot(1,3,1,projection=ccrs.PlateCarree())
+# ax2 = plt.subplot(1,3,2,projection=ccrs.PlateCarree())
+# ax3 = plt.subplot(1,3,3,projection=ccrs.PlateCarree())
+# lon_land = data['lon']
+# lat_land = data['lat']
+
+# # Percent of time that decision 1 is optimal
+# ax1.set_xlabel('Longitude')
+# ax1.set_ylabel('Latitude')
+# scatter = ax1.scatter(lon_land,lat_land,c=frequencies_df[1],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax1,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax1.coastlines()
+# ax1.title.set_text('Decision 1: % samples optimal')
+
+# # Percent of time that decision 2 is optimal
+# ax2.set_xlabel('Longitude')
+# ax2.set_ylabel('Latitude')
+# scatter = ax2.scatter(lon_land,lat_land,c=frequencies_df[2],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax2,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax2.coastlines()
+# ax2.title.set_text('Decision 2: % samples optimal')
+
+# # Percent of time that decision 3 is optimal
+# ax3.set_xlabel('Longitude')
+# ax3.set_ylabel('Latitude')
+# scatter = ax3.scatter(lon_land,lat_land,c=frequencies_df[3],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax3,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax3.coastlines()
+# ax3.title.set_text('Decision 3: % samples optimal')
+
+# plt.show()
+
+# # Plot percentage of time that each decision was optimal in a cell
+
+
+# # List of all possible decisions
+# decision_options = np.unique(Y_riskdec, return_counts = True)
+
+# # Calculate frequencies of each decision per location
+# column_frequencies = {value: [] for value in decision_options[0]}
+# num_rows = Y.shape[0]
+
+# for col_index in range(Y.shape[1]):
+#     unique_values, value_counts = np.unique(Y[:, col_index], return_counts=True)
+#     # Create a dictionary to hold frequency counts for current column
+#     freq_dict = dict(zip(unique_values, value_counts))
+#     # Calculate frequencies for each decision option
+#     for value in decision_options[0]:
+#         if value in freq_dict:
+#             frequency = freq_dict[value] / num_rows
+#         else:
+#             frequency = 0.0  # Value not present, set frequency to 0
+        
+#         column_frequencies[value].append(frequency)
+
+# frequencies_df = pd.DataFrame(column_frequencies)
+
+# fig = plt.figure(figsize=(18,9))
+# ax1 = plt.subplot(1,3,1,projection=ccrs.PlateCarree())
+# ax2 = plt.subplot(1,3,2,projection=ccrs.PlateCarree())
+# ax3 = plt.subplot(1,3,3,projection=ccrs.PlateCarree())
+# lon_land = data['lon']
+# lat_land = data['lat']
+
+# # Percent of time that decision 1 is optimal
+# ax1.set_xlabel('Longitude')
+# ax1.set_ylabel('Latitude')
+# scatter = ax1.scatter(lon_land,lat_land,c=frequencies_df[1],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax1,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax1.coastlines()
+# ax1.title.set_text('Decision 1: % samples optimal')
+
+# # Percent of time that decision 2 is optimal
+# ax2.set_xlabel('Longitude')
+# ax2.set_ylabel('Latitude')
+# scatter = ax2.scatter(lon_land,lat_land,c=frequencies_df[2],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax2,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax2.coastlines()
+# ax2.title.set_text('Decision 2: % samples optimal')
+
+# # Percent of time that decision 3 is optimal
+# ax3.set_xlabel('Longitude')
+# ax3.set_ylabel('Latitude')
+# scatter = ax3.scatter(lon_land,lat_land,c=frequencies_df[3],s=5,vmin=0,vmax=1,cmap='Greens')
+# cbar = plt.colorbar(scatter,ax=ax3,shrink=0.3)
+# cbar.set_label('% samples optimal')
+# ax3.coastlines()
+# ax3.title.set_text('Decision 3: % samples optimal')
+
+# plt.show()
