@@ -324,82 +324,141 @@ plt.show()
 
 # Read in sensitivity results:
 # For risk
-KS_vals = np.load('./data/pawn_results/KS_vals_lhc200.npy')
-KS_lbs = np.load('./data/pawn_results/KS_lbs_lhc200.npy')
-KS_ubs = np.load('./data/pawn_results/KS_ubs_lhc200.npy')
+KS_vals = np.load('../data/pawn_results/KS_vals_lhc200.npy')
+KS_lbs = np.load('../data/pawn_results/KS_lbs_lhc200.npy')
+KS_ubs = np.load('../data/pawn_results/KS_ubs_lhc200.npy')
 # For decision
-max_dist_vals = np.load('./data/pawn_results/max_dist_vals_lhc200.npy')
-max_dist_lbs = np.load('./data/pawn_results/max_dist_lbs_lhc200.npy')
-max_dist_ubs = np.load('./data/pawn_results/max_dist_ubs_lhc200.npy')
+max_dist_vals = np.load('../data/pawn_results/max_dist_vals_lhc200.npy')
+max_dist_lbs = np.load('../data/pawn_results/max_dist_lbs_lhc200.npy')
+max_dist_ubs = np.load('../data/pawn_results/max_dist_ubs_lhc200.npy')
 
-plt.figure(figsize=(19,16))
-# Risk-related boxplots:
-# For London
-ax1 = plt.subplot(3,2,1)
-pf.boxplot1(KS_vals[:,lon_ind],
-            S_lb=KS_lbs[:,lon_ind],
-            S_ub=KS_ubs[:,lon_ind],
-            Y_Label="Mean KS Statistic"
-            )
-plt.title('(a)')
-ax1.set_xticklabels(['']*len(ax1.get_xticks()))
-plt.ylim((None, 0.5))
-# For Lake District
-ax2 = plt.subplot(3,2,3)
-pf.boxplot1(KS_vals[:,ld_ind],
-            S_lb=KS_lbs[:,ld_ind],
-            S_ub=KS_ubs[:,ld_ind],
-            Y_Label="Mean KS Statistic"
-            )
-plt.title('(c)')
-ax2.set_xticklabels(['']*len(ax2.get_xticks()))
-plt.ylim((None, 0.5))
-# For Scotland
-plt.subplot(3,2,5)
-pf.boxplot1(KS_vals[:,scot_ind],
-            S_lb=KS_lbs[:,scot_ind],
-            S_ub=KS_ubs[:,scot_ind],
-            Y_Label="Mean KS Statistic",
-            X_Labels=X_labels_risk_short)
-plt.title('(e)')
-plt.xticks(fontsize=11)
-# plt.xticks(rotation=30,ha='right')
-plt.ylim((None, 0.5))
+# Barplot error bar calculations
+KS_barlower = KS_vals - KS_lbs
+KS_barupper = KS_ubs - KS_vals
+max_dist_barlower = max_dist_vals - max_dist_lbs
+max_dist_barupper = max_dist_ubs - max_dist_vals
 
-# Decision-related boxplots:
-# For London
-ax4 = plt.subplot(3,2,2)
-pf.boxplot1(max_dist_vals[:,lon_ind],
-            S_lb=max_dist_lbs[:,lon_ind],
-            S_ub=max_dist_ubs[:,lon_ind],
-            Y_Label="Maximum MVD"
-            )
-plt.title('(b)')
-ax4.set_xticklabels(['']*len(ax4.get_xticks()))
-plt.ylim((None, 0.5))
-# For Lake District
-ax5 = plt.subplot(3,2,4)
-pf.boxplot1(max_dist_vals[:,ld_ind],
-            S_lb=max_dist_lbs[:,ld_ind],
-            S_ub=max_dist_ubs[:,ld_ind],
-            Y_Label="Maximum MVD"
-            )
-plt.title('(d)')
-ax5.set_xticklabels(['']*len(ax5.get_xticks()))
-plt.ylim((None, 0.5))
-# For Scotland
-plt.subplot(3,2,6)
-pf.boxplot1(max_dist_vals[:,scot_ind],
-            S_lb=max_dist_lbs[:,scot_ind],
-            S_ub=max_dist_ubs[:,scot_ind],
-            Y_Label="Maximum MVD",
-            X_Labels=X_labels_short)
-plt.title('(f)')
-plt.xticks(fontsize=11)
-# plt.xticks(rotation=30,ha='right')
-plt.ylim((None, 0.5))
-
+# Barplot with error bars
+barwidth = 0.2
+fig = plt.figure(figsize=(15,10))
+# London
+ax1 = plt.subplot(3,1,1)
+ax1.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
+        width=barwidth,
+        height=KS_vals[:,lon_ind],
+        yerr=np.array([KS_barlower[:,lon_ind], KS_barupper[:,lon_ind]]))
+ax1.bar(x=np.arange(len(X_labels)) + barwidth/2,
+        width=barwidth,
+        height=max_dist_vals[:,lon_ind],
+        yerr=np.array([max_dist_barlower[:,lon_ind], max_dist_barupper[:,lon_ind]]))
+ax1.set_title("(a)")
+ax1.set_ylabel("Sensitivity")
+ax1.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
+ax1.set_xticks(np.arange(len(X_labels)))
+ax1.set_xticklabels(X_labels_short)
+ax1.set_ylim(0,0.45)
+# Lake District
+ax2 = plt.subplot(3,1,2)
+ax2.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
+        width=barwidth,
+        height=KS_vals[:,ld_ind],
+        yerr=np.array([KS_barlower[:,ld_ind], KS_barupper[:,ld_ind]]))
+ax2.bar(x=np.arange(len(X_labels)) + barwidth/2,
+        width=barwidth,
+        height=max_dist_vals[:,ld_ind],
+        yerr=np.array([max_dist_barlower[:,ld_ind], max_dist_barupper[:,ld_ind]]))
+ax2.set_title("(b)")
+ax2.set_ylabel("Sensitivity")
+ax2.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
+ax2.set_xticks(np.arange(len(X_labels)))
+ax2.set_xticklabels(X_labels_short)
+ax2.set_ylim(0,0.45)
+# Scotland
+ax3 = plt.subplot(3,1,3)
+ax3.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
+        width=barwidth,
+        height=KS_vals[:,scot_ind],
+        yerr=np.array([KS_barlower[:,scot_ind], KS_barupper[:,scot_ind]]))
+ax3.bar(x=np.arange(len(X_labels)) + barwidth/2,
+        width=barwidth,
+        height=max_dist_vals[:,scot_ind],
+        yerr=np.array([max_dist_barlower[:,scot_ind], max_dist_barupper[:,scot_ind]]))
+ax3.set_title("(c)")
+ax3.set_ylabel("Sensitivity")
+ax3.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
+ax3.set_xticks(np.arange(len(X_labels)))
+ax3.set_xticklabels(X_labels_short)
+ax3.set_ylim(0,0.45)
 plt.show()
+
+# plt.figure(figsize=(19,16))
+# # Risk-related boxplots:
+# # For London
+# ax1 = plt.subplot(3,2,1)
+# pf.boxplot1(KS_vals[:,lon_ind],
+#             S_lb=KS_lbs[:,lon_ind],
+#             S_ub=KS_ubs[:,lon_ind],
+#             Y_Label="Mean KS Statistic"
+#             )
+# plt.title('(a)')
+# ax1.set_xticklabels(['']*len(ax1.get_xticks()))
+# plt.ylim((None, 0.5))
+# # For Lake District
+# ax2 = plt.subplot(3,2,3)
+# pf.boxplot1(KS_vals[:,ld_ind],
+#             S_lb=KS_lbs[:,ld_ind],
+#             S_ub=KS_ubs[:,ld_ind],
+#             Y_Label="Mean KS Statistic"
+#             )
+# plt.title('(c)')
+# ax2.set_xticklabels(['']*len(ax2.get_xticks()))
+# plt.ylim((None, 0.5))
+# # For Scotland
+# plt.subplot(3,2,5)
+# pf.boxplot1(KS_vals[:,scot_ind],
+#             S_lb=KS_lbs[:,scot_ind],
+#             S_ub=KS_ubs[:,scot_ind],
+#             Y_Label="Mean KS Statistic",
+#             X_Labels=X_labels_risk_short)
+# plt.title('(e)')
+# plt.xticks(fontsize=11)
+# # plt.xticks(rotation=30,ha='right')
+# plt.ylim((None, 0.5))
+
+# # Decision-related boxplots:
+# # For London
+# ax4 = plt.subplot(3,2,2)
+# pf.boxplot1(max_dist_vals[:,lon_ind],
+#             S_lb=max_dist_lbs[:,lon_ind],
+#             S_ub=max_dist_ubs[:,lon_ind],
+#             Y_Label="Maximum MVD"
+#             )
+# plt.title('(b)')
+# ax4.set_xticklabels(['']*len(ax4.get_xticks()))
+# plt.ylim((None, 0.5))
+# # For Lake District
+# ax5 = plt.subplot(3,2,4)
+# pf.boxplot1(max_dist_vals[:,ld_ind],
+#             S_lb=max_dist_lbs[:,ld_ind],
+#             S_ub=max_dist_ubs[:,ld_ind],
+#             Y_Label="Maximum MVD"
+#             )
+# plt.title('(d)')
+# ax5.set_xticklabels(['']*len(ax5.get_xticks()))
+# plt.ylim((None, 0.5))
+# # For Scotland
+# plt.subplot(3,2,6)
+# pf.boxplot1(max_dist_vals[:,scot_ind],
+#             S_lb=max_dist_lbs[:,scot_ind],
+#             S_ub=max_dist_ubs[:,scot_ind],
+#             Y_Label="Maximum MVD",
+#             X_Labels=X_labels_short)
+# plt.title('(f)')
+# plt.xticks(fontsize=11)
+# # plt.xticks(rotation=30,ha='right')
+# plt.ylim((None, 0.5))
+
+# plt.show()
 
 ###########################################################################
 # FIGURE 5
