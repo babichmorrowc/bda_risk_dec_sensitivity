@@ -155,3 +155,16 @@ def write_decision_file_jit(output_data_path,
 
     return(output)
 
+# Jit function to get sum of squared EAI / sum of EAI
+@jit(nopython=True)
+def risk_sd_helper(land_EAI):
+    land_EAI = 10**land_EAI - 1 # 110 x 83 x 1000
+    dim0, dim1, dim2 = land_EAI.shape
+    sum_eai = np.zeros((dim0, dim1), dtype = land_EAI.dtype)
+    sumsq_eai = np.zeros((dim0, dim1), dtype = land_EAI.dtype)
+    for i in range(dim0):
+        for j in range(dim1):
+            for k in range(dim2):
+                sum_eai[i,j] += land_EAI[i,j,k]
+                sumsq_eai[i,j] += land_EAI[i,j,k] ** 2
+    return sumsq_eai, sum_eai

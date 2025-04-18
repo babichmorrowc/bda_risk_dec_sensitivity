@@ -80,8 +80,24 @@ X_risk = np.array(np.meshgrid(ssp_opts, warming_opts, calibration_opts, vuln1_op
 txx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
 tx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
 
-# Pretty slow -- can I jit this somehow?
-for i in range(X_risk.shape[0]):
+# # Pretty slow -- can I jit this somehow?
+# for i in range(X_risk.shape[0]): # 162
+#     data = Dataset('../data/'+X_risk[i,2]+
+#                     '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
+#                     '_WL'+X_risk[i,1]+
+#                     '_SSP'+X_risk[i,0]+
+#                     '_vp1='+X_risk[i,3]+'_vp2='+X_risk[i,4]+'.nc')
+#     allEAI = np.array(data.variables['sim_annual_impact'])
+#     # land locations have EAI < 9e30
+#     allEAI[np.where(allEAI > 9e30)] = 0
+#     allEAI = 10**allEAI - 1 # 110 x 83 x 1000
+#     # get sum of squared eai values across all gam samples for each combo of risk parameters
+#     txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI) # 110 x 83 x 162
+#     # get sum of eai values across all gam samples
+#     tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI) # 110 x 83 x 162
+
+for i in range(X_risk.shape[0]): # 162
+    # print(i)
     data = Dataset('../data/'+X_risk[i,2]+
                     '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
                     '_WL'+X_risk[i,1]+
@@ -90,11 +106,9 @@ for i in range(X_risk.shape[0]):
     allEAI = np.array(data.variables['sim_annual_impact'])
     # land locations have EAI < 9e30
     allEAI[np.where(allEAI > 9e30)] = 0
-    allEAI = 10**allEAI - 1 # 110 x 83 x 1000
-    # get sum of squared eai values across all gam samples for each combo of risk parameters
-    txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI) # 110 x 83 x 162
-    # get sum of eai values across all gam samples
-    tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI) # 110 x 83 x 162
+    sumsq_eai_i, sum_eai_i = risk_sd_helper(allEAI)
+    txx[:,:,i] = sumsq_eai_i
+    tx[:,:,i] = sum_eai_i
 
 # Sum txx and tx across all risk parameter combinations
 txx_all1 = np.apply_along_axis(lambda x : sum(x), 2, txx) # 110 x 83
@@ -299,7 +313,7 @@ axs[0,1].set_xlim(axs[1,0].get_xlim())
 axs[0,1].set_ylim(axs[1,0].get_ylim())
 
 # plt.subplots_adjust(wspace=0.1)
-plt.savefig('../figures/risk-dec-uncertainty.png')
+plt.savefig('../figures/risk-dec-uncertainty2.png')
 plt.show()
 
 ##############################################################################
@@ -412,7 +426,7 @@ plt.savefig('../figures/prop-dec-maps.png')
 plt.show()
 
 ###########################################################################
-# FIGURE 3
+# FIGURE 4
 # Boxplots of sensitivity metric (KS statistic for risk, PMF MVD for decision)
 # For three chosen locations
 
@@ -440,11 +454,13 @@ ax1 = plt.subplot(3,1,1)
 ax1.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
         width=barwidth,
         height=KS_vals[:,lon_ind],
-        yerr=np.array([KS_barlower[:,lon_ind], KS_barupper[:,lon_ind]]))
+        yerr=np.array([KS_barlower[:,lon_ind], KS_barupper[:,lon_ind]]),
+        color = '#9467BD')
 ax1.bar(x=np.arange(len(X_labels)) + barwidth/2,
         width=barwidth,
         height=max_dist_vals[:,lon_ind],
-        yerr=np.array([max_dist_barlower[:,lon_ind], max_dist_barupper[:,lon_ind]]))
+        yerr=np.array([max_dist_barlower[:,lon_ind], max_dist_barupper[:,lon_ind]]),
+        color = '#FF7F0E')
 ax1.set_title("(a)")
 ax1.set_ylabel("Sensitivity")
 ax1.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
@@ -456,11 +472,13 @@ ax2 = plt.subplot(3,1,2)
 ax2.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
         width=barwidth,
         height=KS_vals[:,ld_ind],
-        yerr=np.array([KS_barlower[:,ld_ind], KS_barupper[:,ld_ind]]))
+        yerr=np.array([KS_barlower[:,ld_ind], KS_barupper[:,ld_ind]]),
+        color = '#9467BD')
 ax2.bar(x=np.arange(len(X_labels)) + barwidth/2,
         width=barwidth,
         height=max_dist_vals[:,ld_ind],
-        yerr=np.array([max_dist_barlower[:,ld_ind], max_dist_barupper[:,ld_ind]]))
+        yerr=np.array([max_dist_barlower[:,ld_ind], max_dist_barupper[:,ld_ind]]),
+        color = '#FF7F0E')
 ax2.set_title("(b)")
 ax2.set_ylabel("Sensitivity")
 ax2.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
@@ -472,11 +490,13 @@ ax3 = plt.subplot(3,1,3)
 ax3.bar(x=np.arange(len(X_labels_risk)) - barwidth/2,
         width=barwidth,
         height=KS_vals[:,scot_ind],
-        yerr=np.array([KS_barlower[:,scot_ind], KS_barupper[:,scot_ind]]))
+        yerr=np.array([KS_barlower[:,scot_ind], KS_barupper[:,scot_ind]]),
+        color = '#9467BD')
 ax3.bar(x=np.arange(len(X_labels)) + barwidth/2,
         width=barwidth,
         height=max_dist_vals[:,scot_ind],
-        yerr=np.array([max_dist_barlower[:,scot_ind], max_dist_barupper[:,scot_ind]]))
+        yerr=np.array([max_dist_barlower[:,scot_ind], max_dist_barupper[:,scot_ind]]),
+        color = '#FF7F0E')
 ax3.set_title("(c)")
 ax3.set_ylabel("Sensitivity")
 ax3.legend(labels = ["Sensitivity of risk", "Sensitivity of decision"])
