@@ -194,6 +194,7 @@ for i in range(nloc_land):
     noptions_riskdec[i] = len(np.unique(Y_riskdec[:,i]))
 # np.unique(noptions_riskdec, return_counts = True)
 
+
 ###########################################################################
 # FIGURE 2 PIECHARTS
 # Inset piecharts showing number of optimal decisions
@@ -313,7 +314,7 @@ axs[0,1].set_xlim(axs[1,0].get_xlim())
 axs[0,1].set_ylim(axs[1,0].get_ylim())
 
 # plt.subplots_adjust(wspace=0.1)
-plt.savefig('../figures/risk-dec-uncertainty2.png')
+plt.savefig('../figures/risk-dec-uncertainty.png')
 plt.show()
 
 ##############################################################################
@@ -338,6 +339,7 @@ for col_index in range(Y_risk.shape[1]):
         
         column_frequencies_risk[value].append(frequency)
 frequencies_df_risk = pd.DataFrame(column_frequencies_risk)
+frequencies_df_risk.iloc[chosen_ind,:]
 
 # Varying risk and decision-related parameters
 # Calculate frequencies of each decision per location
@@ -357,6 +359,7 @@ for col_index in range(Y_riskdec.shape[1]):
         
         column_frequencies_riskdec[value].append(frequency)
 frequencies_df_riskdec = pd.DataFrame(column_frequencies_riskdec)
+frequencies_df_riskdec.iloc[chosen_ind,:]
 
 fig = plt.figure(figsize=(18,9))
 ax1 = plt.subplot(2,3,1,projection=ccrs.PlateCarree())
@@ -504,7 +507,7 @@ ax3.set_xticks(np.arange(len(X_labels)))
 ax3.set_xticklabels(X_labels_short)
 ax3.set_ylim(0,0.45)
 
-plt.savefig('../figures/sens-3locs.png')
+plt.savefig('../figures/sens-3locs2.png')
 plt.show()
 
 ###########################################################################
