@@ -23,14 +23,18 @@ def plot_index(index):
     return fig
 
 # Function to plot decision outcomes on the map given the file name
-def plot_decision_map(file_name):
-    fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+def plot_decision_map(file_name, ax=None):
     dat = pd.read_csv(file_name)
-    cols = ListedColormap(['black','lawngreen','magenta'])
+    cols = ListedColormap(['gray','lawngreen','magenta'])
     classes = ['Do nothing','Modify working hours','Buy cooling equipment']
+    # Create figure and ax only if ax is not provided
+    if ax is None:
+        fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+    else:
+        fig = ax.figure  # grab the figure from the provided axes
     scatter = ax.scatter(dat['lon'],dat['lat'],c=dat['optimal_decision'],cmap=cols,s=12)
     ax.legend(handles=scatter.legend_elements()[0], labels=classes)
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
     ax.coastlines()
-    return fig
+    return ax

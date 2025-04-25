@@ -43,3 +43,4 @@ for ssp in ssp_opts:
             onedec_exp.append([loc, ssp, ssp_year, exp_loc])
 onedec_exp = pd.DataFrame(onedec_exp)
 onedec_exp.columns = ['loc', 'ssp', 'year', 'exposure']
+onedec_exp

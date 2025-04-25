@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.colors import ListedColormap, BoundaryNorm, LogNorm
 import cartopy.crs as ccrs
@@ -11,6 +12,7 @@ from netCDF4 import Dataset
 
 os.chdir("./code")
 from bda_functions import *
+from plotting_functions import *
 
 ###########################################################################
 # Set-up
@@ -49,8 +51,8 @@ X_labels_short = ['SSP',
 X_labels_risk_short = X_labels_short[0:5]
 
 # Chosen locations
-lon_ind = 241 # London
-ld_ind = 1000 # Lake District
+lon_ind = 266 # London
+ld_ind = 1058 # Lake District
 scot_ind = 1445 # location in Scotland very sensitive to SSP
 chosen_ind = [lon_ind, ld_ind, scot_ind]
 
@@ -70,6 +72,87 @@ dis_seq_norm = BoundaryNorm(levels, dis_seq.N)
 legend_labs = ['1 optimal decision', '2 optimal decisions', '3 optimal decisions']
 
 ###########################################################################
+# Optimal decision in each location for the default decision attributes
+# Set up default decision attributes
+# Cost per day of work lost:
+cost_per_day = 200
+# Cost attributes of each of the 3 decisions + objective scores
+def_dec_attributes = np.array([[0, 0, 5],
+                           [250, 0.4, 6],
+                           [600, 0.8, 4]])
+# Relative weighting of priorities
+c_weight_cost = 0.8 
+cweights = [float(c_weight_cost),1-float(c_weight_cost)]
+
+# Get exposure values at the default risk parameters
+def_exp = get_Exp("../data/", ssp="2", ssp_year=2041) # 110 x 83
+# Filter to land locations
+land_ind = np.where(def_exp < 9e30)
+def_exp = def_exp[land_ind]
+# Get risk values at the default risk parameters
+def_eai = get_EAI(input_data_path="../data/", data_source="UKCP_BC", warming_level="2deg", ssp="2", vp1="54.5", vp2="-4.1")
+# Filter to land locations
+def_eai = def_eai[land_ind]
+
+# Define a sequence of numbers for x axis for loss functions
+x = np.linspace(0,6,200)
+# Number of decisions
+nd = 3
+
+# Optimal decision at default values
+default_file = "../data/test/OptimalDecision_defaults_d2_250.0_0.4_6.0_d3_600.0_0.8_4.0.csv"
+data = pd.read_csv(default_file)
+lon_land = data['lon']
+lat_land = data['lat']
+
+fig = plt.figure(figsize=(12, 8))  # Wider figure for horizontal layout
+outer_gs = gridspec.GridSpec(1, 2, width_ratios=[2, 1], wspace=0.3)
+
+# Subplot (a): map of optimal decision in each location
+ax_a = fig.add_subplot(outer_gs[0], projection=ccrs.PlateCarree())
+plot_decision_map(default_file, ax=ax_a)
+ax_a.scatter(lon_land[chosen_ind],
+             lat_land[chosen_ind],
+             facecolors='none',
+             edgecolors='black',
+             s=30,
+             transform=ccrs.PlateCarree())
+ax_a.set_title("(a)")
+
+# Subplots (b), (c), (d): loss functions for the three chosen locations
+right_gs = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=outer_gs[1], hspace=0.4)
+axes_bcd = [fig.add_subplot(right_gs[i]) for i in range(3)]
+
+for idx, ax in zip(chosen_ind, axes_bcd):
+    p = def_exp[idx]
+    if p == 0:
+        p = 1
+    cost = np.empty([nd, len(x)])
+    for j in range(nd):
+        for k in range(len(x)):
+            cost[j, k] = def_dec_attributes[j, 0] * p + cost_per_day * (1 - def_dec_attributes[j, 1]) * (10 ** x[k])
+    log_cost = np.log10(cost)
+    ax.plot(x, log_cost[0, :], label='Do nothing', color='gray')
+    ax.plot(x, log_cost[1, :], label='Modify working hours', color='lawngreen')
+    ax.plot(x, log_cost[2, :], label='Buy cooling equipment', color='magenta')
+    ax.set_xlabel('EAI in grid cell (log base 10)')
+    ax.set_ylabel('Cost, £ (log base 10)')
+    # ax.legend()
+
+    # Histogram on secondary y-axis
+    ax2 = ax.twinx()
+    ax2.hist(def_eai[idx], density=False, color='lightgrey', rwidth=0.8)
+    ax2.set_yticks([])  # removes tick marks
+
+axes_bcd[0].set_title("(b)")
+axes_bcd[1].set_title("(c)")
+axes_bcd[2].set_title("(d)")
+
+plt.savefig('../figures/def-decisions-lossfns.png')
+plt.show()
+
+
+###########################################################################
 # FIGURE 2A & 2B
 # Mean and standard deviation of risk in each grid cell
 # Roughly following Laura's code here:
@@ -79,22 +162,6 @@ X_risk = np.array(np.meshgrid(ssp_opts, warming_opts, calibration_opts, vuln1_op
 # can't make full output matrix - memory issues, so calculate combined SD following http://www.obg.cuhk.edu.hk/ResearchSupport/StatTools/CombineMeansSDs_Pgm.php#:~:text=The%20Standard%20Error%20of%20the,sizes%20from%20all%20the%20groups.
 txx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
 tx = np.empty(110*83*X_risk.shape[0]).reshape(110,83,X_risk.shape[0])
-
-# # Pretty slow -- can I jit this somehow?
-# for i in range(X_risk.shape[0]): # 162
-#     data = Dataset('../data/'+X_risk[i,2]+
-#                     '/GAMsamples_expected_annual_impact_data_'+X_risk[i,2]+
-#                     '_WL'+X_risk[i,1]+
-#                     '_SSP'+X_risk[i,0]+
-#                     '_vp1='+X_risk[i,3]+'_vp2='+X_risk[i,4]+'.nc')
-#     allEAI = np.array(data.variables['sim_annual_impact'])
-#     # land locations have EAI < 9e30
-#     allEAI[np.where(allEAI > 9e30)] = 0
-#     allEAI = 10**allEAI - 1 # 110 x 83 x 1000
-#     # get sum of squared eai values across all gam samples for each combo of risk parameters
-#     txx[:,:,i] = np.apply_along_axis(lambda x : sum(x**2), 2, allEAI) # 110 x 83 x 162
-#     # get sum of eai values across all gam samples
-#     tx[:, :, i] = np.apply_along_axis(lambda x: sum(x), 2, allEAI) # 110 x 83 x 162
 
 for i in range(X_risk.shape[0]): # 162
     # print(i)
@@ -139,6 +206,10 @@ def_exp = get_Exp("../data/", ssp="2", ssp_year=2041) # 110 x 83
 land_ind = np.where(def_exp < 9e30)
 def_exp[land_ind][chosen_ind]
 meanall[land_ind][chosen_ind]
+
+# Location with max risk
+# meanall[land_ind].max()
+# np.argmax(meanall[land_ind]) # 266
 
 ###########################################################################
 # FIGURE 2C
